@@ -1,0 +1,327 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { getAuth } from 'firebase/auth';
+import { db } from '../firebase';
+import { collection, query, where, orderBy, limit, getDocs, doc, updateDoc, Timestamp } from 'firebase/firestore';
+import { useNavigate } from 'react-router-dom';
+
+const Notification = ({ isOpen, onClose, onNotificationsRead }) => {
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const notificationRef = useRef(null);
+  const navigate = useNavigate();
+  const auth = getAuth();
+  const currentUser = auth.currentUser;
+
+  // 获取通知数据
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      if (!currentUser) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError(null);
+
+        // 查询用户的通知
+        const notificationsQuery = query(
+          collection(db, 'notifications'),
+          where('userId', '==', currentUser.uid),
+          orderBy('createdAt', 'desc'), // 按创建时间降序排序
+          limit(10)
+        );
+
+        try {
+          const querySnapshot = await getDocs(notificationsQuery);
+          const notificationsData = [];
+
+          querySnapshot.forEach((doc) => {
+            notificationsData.push({
+              id: doc.id,
+              ...doc.data(),
+              createdAt: doc.data().createdAt?.toDate() || new Date()
+            });
+          });
+
+          setNotifications(notificationsData);
+        } catch (err) {
+          console.error('Error fetching notifications with orderBy:', err);
+          
+          // 尝试不使用orderBy来获取通知
+          if (err.code === 'failed-precondition' || err.message.includes('index')) {
+            try {
+              const basicQuery = query(
+                collection(db, 'notifications'),
+                where('userId', '==', currentUser.uid),
+                limit(20)
+              );
+              
+              const fallbackSnapshot = await getDocs(basicQuery);
+              const fallbackData = [];
+              
+              fallbackSnapshot.forEach((doc) => {
+                fallbackData.push({
+                  id: doc.id,
+                  ...doc.data(),
+                  createdAt: doc.data().createdAt?.toDate() || new Date()
+                });
+              });
+              
+              // 客户端手动排序
+              fallbackData.sort((a, b) => b.createdAt - a.createdAt);
+              
+              setNotifications(fallbackData);
+              
+              // 显示索引错误提示
+              const indexUrl = err.message.match(/https:\/\/console\.firebase\.google\.com[^\s]*/);
+              setError(
+                <div>
+                  <p>This query requires an index. Please create it by clicking the link below:</p>
+                  <a 
+                    href={indexUrl ? indexUrl[0] : "https://console.firebase.google.com"} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-emerald-500 hover:underline"
+                  >
+                    Create Index
+                  </a>
+                </div>
+              );
+            } catch (fallbackErr) {
+              console.error('Fallback query also failed:', fallbackErr);
+              setError('Failed to load notifications');
+            }
+          } else {
+            setError('Failed to load notifications');
+          }
+        }
+      } catch (outerErr) {
+        console.error('Error in notification component:', outerErr);
+        setError('An unexpected error occurred');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (isOpen) {
+      fetchNotifications();
+    }
+  }, [currentUser, isOpen]);
+
+  // 处理点击外部关闭通知面板
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (notificationRef.current && !notificationRef.current.contains(event.target) && 
+          !event.target.closest('[data-notification-toggle]')) {
+        onClose();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen, onClose]);
+
+  // 标记通知为已读
+  const markAsRead = async (notificationId) => {
+    try {
+      const notificationRef = doc(db, 'notifications', notificationId);
+      await updateDoc(notificationRef, {
+        read: true,
+        readAt: Timestamp.now()
+      });
+
+      // 更新本地状态
+      setNotifications(prev => 
+        prev.map(notification => 
+          notification.id === notificationId 
+            ? { ...notification, read: true, readAt: new Date() } 
+            : notification
+        )
+      );
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
+  };
+
+  // 标记所有通知为已读
+  const markAllAsRead = async () => {
+    try {
+      const unreadNotifications = notifications.filter(notification => !notification.read);
+      
+      if (unreadNotifications.length === 0) return;
+      
+      // 批量更新 Firestore
+      const updatePromises = unreadNotifications.map(notification => 
+        updateDoc(doc(db, 'notifications', notification.id), {
+          read: true,
+          readAt: Timestamp.now()
+        })
+      );
+      
+      await Promise.all(updatePromises);
+      
+      // 更新本地状态
+      setNotifications(prev => 
+        prev.map(notification => ({ ...notification, read: true, readAt: new Date() }))
+      );
+      
+      // 调用回调函数通知 Header 组件
+      if (onNotificationsRead) {
+        onNotificationsRead();
+      }
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error);
+    }
+  };
+
+  // 修改通知点击处理函数，只标记为已读而不导航
+  const handleNotificationClick = async (notification) => {
+    // 如果未读，标记为已读
+    if (!notification.read) {
+      try {
+        await markAsRead(notification.id);
+        
+        // 可以添加一个成功提示（可选）
+        // toast.success("Notification marked as read");
+      } catch (error) {
+        console.error('Error marking notification as read:', error);
+      }
+    }
+    
+    // 不再导航到其他页面
+    // 不再关闭通知面板
+  };
+
+  // 格式化时间
+  const formatTime = (date) => {
+    if (!date) return '';
+    
+    const now = new Date();
+    const diff = now - date;
+    const seconds = Math.floor(diff / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+    
+    if (seconds < 60) {
+      return 'just now';
+    } else if (minutes < 60) {
+      return `${minutes} ${minutes === 1 ? 'minute' : 'minutes'} ago`;
+    } else if (hours < 24) {
+      return `${hours} ${hours === 1 ? 'hour' : 'hours'} ago`;
+    } else if (days < 7) {
+      return `${days} ${days === 1 ? 'day' : 'days'} ago`;
+    } else {
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+    }
+  };
+
+  // 获取通知图标
+  const getNotificationIcon = (type) => {
+    switch (type) {
+      case 'task_assigned':
+        return <i className="fas fa-tasks text-emerald-500 dark:text-emerald-400"></i>;
+      case 'task_updated':
+        return <i className="fas fa-edit text-blue-500 dark:text-blue-400"></i>;
+      case 'team_invitation':
+        return <i className="fas fa-user-plus text-purple-500 dark:text-purple-400"></i>;
+      case 'comment_mention':
+        return <i className="fas fa-comment text-yellow-500 dark:text-yellow-400"></i>;
+      default:
+        return <i className="fas fa-bell text-gray-500 dark:text-gray-400"></i>;
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div 
+      ref={notificationRef}
+      className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden z-50"
+      style={{ top: '100%' }}
+    >
+      <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+        <h3 className="text-lg font-medium text-gray-900 dark:text-white">Notifications</h3>
+        {notifications.some(notification => !notification.read) && (
+          <button 
+            onClick={markAllAsRead}
+            className="text-xs text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300"
+          >
+            Mark all as read
+          </button>
+        )}
+      </div>
+      
+      <div className="max-h-96 overflow-y-auto">
+        {loading ? (
+          <div className="flex justify-center items-center p-4">
+            <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-emerald-500"></div>
+          </div>
+        ) : error ? (
+          <div className="p-4 text-center text-red-500 dark:text-red-400">{error}</div>
+        ) : notifications.length === 0 ? (
+          <div className="p-4 text-center text-gray-500 dark:text-gray-400">
+            No notifications yet
+          </div>
+        ) : (
+          <ul>
+            {notifications.map((notification) => (
+              <li 
+                key={notification.id}
+                className={`border-b border-gray-100 dark:border-gray-700 last:border-b-0 cursor-pointer transition-colors duration-300 ${
+                  notification.read 
+                    ? 'bg-white dark:bg-gray-800' 
+                    : 'bg-emerald-50 dark:bg-emerald-900/20'
+                }`}
+                onClick={() => handleNotificationClick(notification)}
+              >
+                <div className="flex p-4">
+                  <div className="flex-shrink-0 mr-3">
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center bg-gray-100 dark:bg-gray-700">
+                      {getNotificationIcon(notification.type)}
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex justify-between items-start">
+                      <p className={`text-sm ${notification.read ? 'text-gray-800 dark:text-gray-200' : 'font-medium text-gray-900 dark:text-white'}`}>
+                        {notification.title}
+                      </p>
+                      <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">
+                        {formatTime(notification.createdAt)}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">
+                      {notification.message}
+                    </p>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      
+      <div className="p-3 border-t border-gray-200 dark:border-gray-700 text-center">
+        <button 
+          onClick={() => navigate('/settings')}
+          className="text-sm text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300"
+        >
+          Notification Settings
+        </button>
+      </div>
+    </div>
+  );
+};
+
+export default Notification; 
