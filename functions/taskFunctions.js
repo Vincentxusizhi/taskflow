@@ -188,18 +188,36 @@ exports.updateTask = functions.https.onCall(async (request) => {
     // 当前时间的 Firestore Timestamp
     const now = admin.firestore.Timestamp.fromDate(new Date());
 
-    // 更新任务数据
+    // 保存原始的start_date，确保它是Timestamp格式
+    let originalStartDate = tasks[taskIndex].start_date;
+    if (originalStartDate && !(originalStartDate instanceof admin.firestore.Timestamp)) {
+        // 尝试从可能的序列化格式转换回Timestamp
+        if (originalStartDate.seconds !== undefined) {
+            originalStartDate = new admin.firestore.Timestamp(originalStartDate.seconds, originalStartDate.nanoseconds || 0);
+        } else {
+            // 如果无法转换，使用当前时间或记录错误
+            console.warn("Original start_date is not a Timestamp, using current date");
+            originalStartDate = admin.firestore.Timestamp.fromDate(new Date());
+        }
+    }
+
+    // 创建传入数据的副本
+    const incomingTaskData = {...taskData};
+    
+    // 显式删除传入数据中的start_date，防止覆盖
+    if (incomingTaskData.start_date !== undefined) {
+      delete incomingTaskData.start_date;
+      console.log("start_date field explicitly removed from incoming data before merge.");
+    }
+
+    // 更新任务数据：合并原始任务和移除了start_date的传入数据
     const updatedTask = {
-      ...tasks[taskIndex],
-      ...taskData,
+      ...tasks[taskIndex], // 原始任务
+      ...incomingTaskData, // 传入的更新（不含start_date）
+      start_date: originalStartDate, // 强制使用原始的start_date
       updatedBy: userId,
       updatedAt: now // 使用静态 Timestamp 而不是 serverTimestamp
     };
-
-    // 处理日期
-    if (updatedTask.start_date && typeof updatedTask.start_date === 'string') {
-      updatedTask.start_date = admin.firestore.Timestamp.fromDate(new Date(updatedTask.start_date));
-    }
 
     // 更新任务数组
     tasks[taskIndex] = updatedTask;
@@ -207,10 +225,11 @@ exports.updateTask = functions.https.onCall(async (request) => {
     // 更新 Firestore
     await teamRef.update({ tasks });
 
+    // 直接返回更新后的任务数据
     return { 
       success: true,
       taskId: updatedTask.id,
-      task: updatedTask
+      task: updatedTask // 前端会处理日期格式
     };
   } catch (error) {
     console.error("Error updating task:", error);

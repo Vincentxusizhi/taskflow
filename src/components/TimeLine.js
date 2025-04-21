@@ -430,7 +430,6 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
         originalTask.text !== editedTask.text ||
         originalTask.description !== editedTask.description ||
         originalTask.priority !== editedTask.priority ||
-        JSON.stringify(originalTask.start_date) !== JSON.stringify(editedTask.start_date) ||
         originalTask.duration !== editedTask.duration;
       
       // 检查权限：如果有"其他字段"的更改，需要管理员/经理权限
@@ -461,13 +460,14 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
         
         // 使用修正后的任务数据进行保存
         const updateTaskFunction = httpsCallable(functions, 'updateTask');
+        
+        // Remove start_date before sending
+        const { start_date: removedStartDate1, ...taskDataForUpdate1 } = taskWithOnlyStatusProgressChanges;
+        
         const result = await updateTaskFunction({
           teamId: teamId,
           taskId: taskWithOnlyStatusProgressChanges.id,
-          taskData: {
-            status: taskWithOnlyStatusProgressChanges.status,
-            progress: taskWithOnlyStatusProgressChanges.progress
-          }
+          taskData: taskDataForUpdate1 // Use data without start_date
         });
         
         console.log('Task updated with restricted changes:', result.data);
@@ -492,10 +492,14 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
       
       // 如果有权限进行所有更改，则正常保存
       const updateTaskFunction = httpsCallable(functions, 'updateTask');
+      
+      // Remove start_date before sending
+      const { start_date: removedStartDate2, ...taskDataForUpdate2 } = editedTask;
+      
       const result = await updateTaskFunction({
         teamId: teamId,
         taskId: editedTask.id,
-        taskData: editedTask
+        taskData: taskDataForUpdate2 // Use data without start_date
       });
       
       console.log('Task fully updated:', result.data);
@@ -1629,7 +1633,7 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
 
   <div className="grid grid-cols-2 gap-4 mb-4">
                   <div>
-      <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Start Date</h3>
+      <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Start Date 111</h3>
       <p className="text-gray-800 dark:text-gray-200">
         {formatDate(selectedTask.start_date)}
       </p>
@@ -1927,15 +1931,42 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
           </div>
           <div className="flex items-center ml-4">
             <button 
-              onClick={(e) => {
+              onClick={async (e) => {
                 e.preventDefault();
+                // Create a temporary link element once
                 const downloadLink = document.createElement('a');
-                downloadLink.href = file.url;
-                downloadLink.download = file.name;
-                downloadLink.setAttribute('download', file.name);
-                document.body.appendChild(downloadLink);
-                downloadLink.click();
-                document.body.removeChild(downloadLink);
+                try {
+                  // Fetch the file as a blob
+                  const response = await fetch(file.url);
+                  if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                  }
+                  const blob = await response.blob();
+                  
+                  // Create an object URL for the blob
+                  const blobUrl = window.URL.createObjectURL(blob);
+                  
+                  // Set attributes for the link
+                  downloadLink.href = blobUrl;
+                  downloadLink.download = file.name; // Set the desired filename
+                  
+                  // Append to body, click, and remove
+                  document.body.appendChild(downloadLink);
+                  downloadLink.click();
+                  document.body.removeChild(downloadLink);
+                  
+                  // Revoke the object URL to free up memory
+                  window.URL.revokeObjectURL(blobUrl);
+                } catch (error) {
+                  console.error('Error downloading file:', error);
+                  // Optionally show a notification to the user
+                  showNotification('Failed to download file. Please try again.', 'error');
+                } finally {
+                  // Clean up the link element even if there was an error before appendChild
+                  if (downloadLink.parentNode === document.body) {
+                      document.body.removeChild(downloadLink);
+                  }
+                }
               }}
               className="p-2 text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 rounded-full transition-colors"
               title="Download"

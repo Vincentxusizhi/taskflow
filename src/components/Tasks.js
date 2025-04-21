@@ -6,7 +6,8 @@ import { db, auth } from '../firebase';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import Header from './Header';
 import Timeline from './TimeLine';
-import GanttChart from './GanttChart';
+import Calendar from './Calendar';
+
 
 // 初始化 Firebase Functions
 const functions = getFunctions();
@@ -24,6 +25,13 @@ const MainPage = () => {
   const [loading, setLoading] = useState(true);
   const [teamData, setTeamData] = useState(null);
   const [showCreateTaskModal, setShowCreateTaskModal] = useState(false);
+  
+  // Task defaults from user settings
+  const [userTaskDefaults, setUserTaskDefaults] = useState({
+    defaultTaskPriority: 'medium',
+    defaultTaskDuration: 1
+  });
+  
   const [newTask, setNewTask] = useState({
     text: '',
     description: '',
@@ -34,6 +42,7 @@ const MainPage = () => {
     progress: 0,
     assignees: []
   });
+  
   const [teamMembers, setTeamMembers] = useState([]);
   const [selectedAssignees, setSelectedAssignees] = useState([]);
   const sidebarRef = useRef(null);
@@ -145,13 +154,28 @@ const MainPage = () => {
           
           if (userSnap.exists()) {
             // Combine auth user data with Firestore data
-            setUserData({
+            const userData = {
               uid: user.uid,
               email: user.email,
               displayName: userSnap.data().displayName || user.displayName || 'User',
               photoURL: user.photoURL || 'https://via.placeholder.com/100',
               ...userSnap.data()
-            });
+            };
+            
+            setUserData(userData);
+            
+            // Get task defaults if available
+            if (userData.taskDefaults) {
+              console.log("Loaded user task defaults:", userData.taskDefaults);
+              setUserTaskDefaults(userData.taskDefaults);
+              
+              // Reset newTask with user defaults
+              setNewTask(prev => ({
+                ...prev,
+                duration: userData.taskDefaults.defaultTaskDuration || 1,
+                priority: userData.taskDefaults.defaultTaskPriority || 'medium'
+              }));
+            }
           } else {
             // Use auth data if Firestore document doesn't exist
             setUserData({
@@ -235,6 +259,23 @@ const MainPage = () => {
     };
   }, [showSidebar]);
 
+  // 处理打开创建任务模态框
+  const handleOpenCreateTaskModal = () => {
+    // Apply user default task settings when opening the modal
+    setNewTask({
+      text: '',
+      description: '',
+      start_date: Timestamp.fromDate(new Date()),
+      duration: userTaskDefaults.defaultTaskDuration || 1,
+      type: 'task',
+      priority: userTaskDefaults.defaultTaskPriority || 'medium',
+      progress: 0,
+      assignees: []
+    });
+    setSelectedAssignees([]);
+    setShowCreateTaskModal(true);
+  };
+
   // 处理创建任务
   const handleCreateTask = async (e) => {
     e.preventDefault();
@@ -286,14 +327,14 @@ const MainPage = () => {
       
       console.log('Task created successfully:', result.data);
       
-      // 重置表单
+      // 重置表单，使用用户默认设置
       setNewTask({
         text: '',
         description: '',
         start_date: Timestamp.fromDate(new Date()),
-        duration: 1,
+        duration: userTaskDefaults.defaultTaskDuration || 1,
         type: 'task',
-        priority: 'medium',
+        priority: userTaskDefaults.defaultTaskPriority || 'medium',
         progress: 0,
         assignees: []
       });
@@ -345,11 +386,11 @@ const MainPage = () => {
         case 'progress':
           return viewMode === 'timeline' 
             ? <Timeline key={`timeline-${teamId}`} teamId={teamId} refreshKey={refreshKey} />
-            : <GanttChart key={`gantt-${teamId}`} teamId={teamId} refreshKey={refreshKey} />;
+            : <Calendar key={`gantt-${teamId}`} teamId={teamId} refreshKey={refreshKey} />;
         default:
           return viewMode === 'timeline'
             ? <Timeline key={`timeline-${teamId}`} teamId={teamId} refreshKey={refreshKey} />
-            : <GanttChart key={`gantt-${teamId}`} teamId={teamId} refreshKey={refreshKey} />;
+            : <Calendar key={`gantt-${teamId}`} teamId={teamId} refreshKey={refreshKey} />;
       }
     } catch (error) {
       console.error("Error rendering component:", error);
@@ -413,7 +454,7 @@ const MainPage = () => {
                 {(isAdmin || isManager) && (
                   <button
                     type="button"
-                    onClick={() => setShowCreateTaskModal(true)}
+                    onClick={handleOpenCreateTaskModal}
                     className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
                   >
                     <i className="fas fa-plus mr-2"></i>
@@ -447,7 +488,7 @@ const MainPage = () => {
                     }`}
                   >
                     <i className="fas fa-bars-progress mr-2"></i>
-                    Gantt Chart
+                    Calendar
                   </button>
                 </div>
               </div>
@@ -527,6 +568,9 @@ const MainPage = () => {
                           <div>
                             <label htmlFor="duration" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                               Duration (days)
+                              {newTask.duration === userTaskDefaults.defaultTaskDuration && (
+                                <span className="ml-2 text-xs text-emerald-600 dark:text-emerald-400">(default)</span>
+                              )}
                             </label>
                             <input
                               type="number"
@@ -543,6 +587,9 @@ const MainPage = () => {
                           <div>
                             <label htmlFor="priority" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                               Priority
+                              {newTask.priority === userTaskDefaults.defaultTaskPriority && (
+                                <span className="ml-2 text-xs text-emerald-600 dark:text-emerald-400">(default)</span>
+                              )}
                             </label>
                             <select
                               id="priority"
@@ -619,6 +666,9 @@ const MainPage = () => {
                   >
                     Cancel
                   </button>
+                </div>
+                <div className="px-4 py-2 text-center text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600">
+                  You can change default task settings in your <a href="/settings" className="text-emerald-600 dark:text-emerald-400 hover:underline">Settings</a> page.
                 </div>
               </form>
             </div>

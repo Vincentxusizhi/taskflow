@@ -8,10 +8,24 @@ const Notification = ({ isOpen, onClose, onNotificationsRead }) => {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [lastRefresh, setLastRefresh] = useState(Date.now());
   const notificationRef = useRef(null);
   const navigate = useNavigate();
   const auth = getAuth();
   const currentUser = auth.currentUser;
+
+  // Refresh notifications every 30 seconds when panel is open
+  useEffect(() => {
+    let intervalId;
+    if (isOpen) {
+      intervalId = setInterval(() => {
+        setLastRefresh(Date.now());
+      }, 30000); // 30 seconds
+    }
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [isOpen]);
 
   // 获取通知数据
   useEffect(() => {
@@ -25,6 +39,8 @@ const Notification = ({ isOpen, onClose, onNotificationsRead }) => {
         setLoading(true);
         setError(null);
 
+        console.log("Fetching notifications for user:", currentUser.uid);
+
         // 查询用户的通知
         const notificationsQuery = query(
           collection(db, 'notifications'),
@@ -37,11 +53,16 @@ const Notification = ({ isOpen, onClose, onNotificationsRead }) => {
           const querySnapshot = await getDocs(notificationsQuery);
           const notificationsData = [];
 
+          console.log("Query returned", querySnapshot.size, "notifications");
+          
           querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            console.log("Notification type:", data.type, "title:", data.title, "message:", data.message);
+            
             notificationsData.push({
               id: doc.id,
-              ...doc.data(),
-              createdAt: doc.data().createdAt?.toDate() || new Date()
+              ...data,
+              createdAt: data.createdAt?.toDate() || new Date()
             });
           });
 
@@ -52,6 +73,8 @@ const Notification = ({ isOpen, onClose, onNotificationsRead }) => {
           // 尝试不使用orderBy来获取通知
           if (err.code === 'failed-precondition' || err.message.includes('index')) {
             try {
+              console.log("Trying fallback query without orderBy");
+              
               const basicQuery = query(
                 collection(db, 'notifications'),
                 where('userId', '==', currentUser.uid),
@@ -61,11 +84,16 @@ const Notification = ({ isOpen, onClose, onNotificationsRead }) => {
               const fallbackSnapshot = await getDocs(basicQuery);
               const fallbackData = [];
               
+              console.log("Fallback query returned", fallbackSnapshot.size, "notifications");
+              
               fallbackSnapshot.forEach((doc) => {
+                const data = doc.data();
+                console.log("Fallback notification type:", data.type, "title:", data.title);
+                
                 fallbackData.push({
                   id: doc.id,
-                  ...doc.data(),
-                  createdAt: doc.data().createdAt?.toDate() || new Date()
+                  ...data,
+                  createdAt: data.createdAt?.toDate() || new Date()
                 });
               });
               
@@ -108,7 +136,7 @@ const Notification = ({ isOpen, onClose, onNotificationsRead }) => {
     if (isOpen) {
       fetchNotifications();
     }
-  }, [currentUser, isOpen]);
+  }, [currentUser, isOpen, lastRefresh]);
 
   // 处理点击外部关闭通知面板
   useEffect(() => {
@@ -231,6 +259,7 @@ const Notification = ({ isOpen, onClose, onNotificationsRead }) => {
   const getNotificationIcon = (type) => {
     switch (type) {
       case 'task_assigned':
+      case 'task_assignment':
         return <i className="fas fa-tasks text-emerald-500 dark:text-emerald-400"></i>;
       case 'task_updated':
         return <i className="fas fa-edit text-blue-500 dark:text-blue-400"></i>;
@@ -238,6 +267,10 @@ const Notification = ({ isOpen, onClose, onNotificationsRead }) => {
         return <i className="fas fa-user-plus text-purple-500 dark:text-purple-400"></i>;
       case 'comment_mention':
         return <i className="fas fa-comment text-yellow-500 dark:text-yellow-400"></i>;
+      case 'task_comment':
+        return <i className="fas fa-comment-dots text-green-500 dark:text-green-400"></i>;
+      case 'comment_reply':
+        return <i className="fas fa-reply text-orange-500 dark:text-orange-400"></i>;
       default:
         return <i className="fas fa-bell text-gray-500 dark:text-gray-400"></i>;
     }
@@ -253,14 +286,23 @@ const Notification = ({ isOpen, onClose, onNotificationsRead }) => {
     >
       <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
         <h3 className="text-lg font-medium text-gray-900 dark:text-white">Notifications</h3>
-        {notifications.some(notification => !notification.read) && (
+        <div className="flex gap-2">
+          {notifications.some(notification => !notification.read) && (
+            <button 
+              onClick={markAllAsRead}
+              className="text-xs text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300"
+            >
+              Mark all as read
+            </button>
+          )}
           <button 
-            onClick={markAllAsRead}
-            className="text-xs text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300"
+            onClick={() => setLastRefresh(Date.now())}
+            className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 ml-2"
+            title="Refresh notifications"
           >
-            Mark all as read
+            <i className="fas fa-sync-alt"></i>
           </button>
-        )}
+        </div>
       </div>
       
       <div className="max-h-96 overflow-y-auto">

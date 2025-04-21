@@ -157,22 +157,21 @@ const UserProfile = () => {
         displayName: editedUser.displayName
       });
       
-      // 如果邮箱已更改，更新邮箱
-      if (editedUser.email !== user.email) {
-        await updateEmail(currentUser, editedUser.email);
-      }
-      
       // Call the cloud function to update user profile
       const updateUserProfile = httpsCallable(functions, 'updateUserProfile');
       await updateUserProfile({
         userId,
-        profileData: editedUser
+        profileData: {
+          ...editedUser,
+          email: currentUser.email // Always use the authenticated email
+        }
       });
       
       // 更新本地状态
       setUser(prev => ({
         ...prev,
-        ...editedUser
+        ...editedUser,
+        email: currentUser.email // Ensure email in local state matches auth email
       }));
       
       setIsEditing(false);
@@ -563,9 +562,10 @@ const UserProfile = () => {
                           type="email"
                           name="email"
                           value={editedUser.email}
-                          onChange={handleInputChange}
-                          className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-gray-700 dark:text-white"
+                          readOnly
+                          className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-gray-700 dark:text-white bg-gray-100 dark:bg-gray-600 cursor-not-allowed"
                         />
+                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Email cannot be changed for security reasons</p>
                       </div>
                       
                       <div>
@@ -608,7 +608,7 @@ const UserProfile = () => {
                             setIsEditing(false);
                             setEditedUser({
                               displayName: user.displayName || '',
-                              email: user.email || '',
+                              email: currentUser.email || user.email || '', // Always use the authenticated email
                               bio: user.bio || '',
                               role: user.role || '',
                               phoneNumber: user.phoneNumber || ''

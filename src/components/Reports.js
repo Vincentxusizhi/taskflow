@@ -31,6 +31,43 @@ ChartJS.register(
   Legend
 );
 
+// Helper function to calculate due date
+const calculateDueDate = (startDate, duration) => {
+  if (!startDate) return null;
+  const start = getDateFromTimestamp(startDate);
+  const dueDate = new Date(start);
+  dueDate.setDate(dueDate.getDate() + (parseInt(duration) || 0));
+  return dueDate;
+};
+
+// Helper function to check if a task is overdue
+const isTaskOverdue = (task) => {
+  if (!task || task.status === 'completed') return false;
+  const dueDate = calculateDueDate(task.start_date, task.duration);
+  if (!dueDate) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  dueDate.setHours(0, 0, 0, 0);
+  return dueDate < today;
+};
+
+// Helper function to get Date from various timestamp formats
+const getDateFromTimestamp = (timestamp) => {
+  if (!timestamp) return new Date();
+  
+  if (timestamp instanceof Date) {
+    return timestamp;
+  } else if (typeof timestamp.toDate === 'function') {
+    return timestamp.toDate();
+  } else if (timestamp._seconds) {
+    return new Date(timestamp._seconds * 1000);
+  } else {
+    // Attempt to parse if it's a string, otherwise return current date as fallback
+    const date = new Date(timestamp);
+    return isNaN(date.getTime()) ? new Date() : date;
+  }
+};
+
 const Reports = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -113,25 +150,35 @@ const Reports = () => {
       'not-started': 0,
       'in-progress': 0,
       'completed': 0,
-      'on-hold': 0
+      'overdue': 0
     };
 
     tasks.forEach(task => {
-      const status = task.status || 'not-started';
-      statusCounts[status] = (statusCounts[status] || 0) + 1;
+      if (isTaskOverdue(task)) {
+        statusCounts.overdue++;
+      } else if (task.status === 'completed') {
+        statusCounts.completed++;
+      } else if (task.status === 'inProgress') { // Check original status key from Timeline.js
+        statusCounts['in-progress']++;
+      } else if (task.status === 'notStarted' || !task.status) { // Explicitly check for notStarted or null/undefined
+        statusCounts['not-started']++;
+      }
+      // Tasks with any other status (e.g., 'on-hold') will be ignored for this chart.
     });
 
-    const labels = Object.keys(statusCounts).map(status => {
-      // Format the status labels for better readability
-      return status
-        .split('-')
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(' ');
-    });
+    // Define the specific labels we want
+    const labels = ['Not Started', 'In Progress', 'Completed', 'Overdue'];
+    // Map the counts in the desired order
+    const data = [
+      statusCounts['not-started'],
+      statusCounts['in-progress'],
+      statusCounts.completed,
+      statusCounts.overdue
+    ];
 
     setTasksByStatus({
       labels,
-      data: Object.values(statusCounts)
+      data
     });
   };
 
@@ -229,11 +276,7 @@ const Reports = () => {
     const completedTasks = tasks.filter(task => 
       task.status === 'completed' && 
       task.completedAt && 
-      (
-        (task.completedAt instanceof Date && task.completedAt >= startDate) ||
-        (task.completedAt.toDate && task.completedAt.toDate() >= startDate) ||
-        (task.completedAt._seconds && new Date(task.completedAt._seconds * 1000) >= startDate)
-      )
+      (getDateFromTimestamp(task.completedAt) >= startDate)
     );
 
     // Count tasks completed in each period
@@ -255,13 +298,11 @@ const Reports = () => {
       data = Array(4).fill(0);
       
       completedTasks.forEach(task => {
-        const completedDate = getDateFromTimestamp(task.completedAt);
+        const completedDate = getDateFromTimestamp(task.completedAt);        
         const dayDiff = Math.floor((completedDate - startDate) / (1000 * 60 * 60 * 24));
         if (dayDiff >= 0 && dayDiff < 30) {
-          const weekIndex = Math.floor(dayDiff / 7);
-          if (weekIndex < 4) {
-            data[weekIndex]++;
-          }
+          const weekIndex = Math.min(3, Math.floor(dayDiff / 7)); // Ensure index stays within bounds
+          data[weekIndex]++;
         }
       });
     } else if (selectedTimeRange === 'year') {
@@ -282,21 +323,6 @@ const Reports = () => {
       labels,
       data
     });
-  };
-
-  // Helper function to get Date from various timestamp formats
-  const getDateFromTimestamp = (timestamp) => {
-    if (!timestamp) return new Date();
-    
-    if (timestamp instanceof Date) {
-      return timestamp;
-    } else if (typeof timestamp.toDate === 'function') {
-      return timestamp.toDate();
-    } else if (timestamp._seconds) {
-      return new Date(timestamp._seconds * 1000);
-    } else {
-      return new Date(timestamp);
-    }
   };
 
   // Handle time range change
@@ -379,10 +405,10 @@ const Reports = () => {
         label: 'Tasks by Status',
         data: tasksByStatus.data,
         backgroundColor: [
-          'rgba(75, 192, 192, 0.6)',  // Teal - completed
-          'rgba(54, 162, 235, 0.6)',  // Blue - in progress
-          'rgba(255, 206, 86, 0.6)',  // Yellow - not started
-          'rgba(255, 99, 132, 0.6)',  // Red - on hold
+          'rgba(255, 206, 86, 0.6)',  // Yellow - Not Started
+          'rgba(54, 162, 235, 0.6)',  // Blue - In Progress
+          'rgba(75, 192, 192, 0.6)',  // Teal - Completed
+          'rgba(255, 99, 132, 0.6)',   // Red - Overdue
         ],
         borderWidth: 1,
       },
@@ -464,7 +490,7 @@ const Reports = () => {
             <span className="text-gray-700 dark:text-gray-300">Time Range:</span>
             <div className="flex space-x-2">
               <button
-                className={`px-3 py-1 rounded-md text-sm ${
+                className={`px-3 py-1 rounded-md text-sm ${ 
                   selectedTimeRange === 'week'
                     ? 'bg-emerald-500 text-white'
                     : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
@@ -474,7 +500,7 @@ const Reports = () => {
                 Week
               </button>
               <button
-                className={`px-3 py-1 rounded-md text-sm ${
+                className={`px-3 py-1 rounded-md text-sm ${ 
                   selectedTimeRange === 'month'
                     ? 'bg-emerald-500 text-white'
                     : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
@@ -484,7 +510,7 @@ const Reports = () => {
                 Month
               </button>
               <button
-                className={`px-3 py-1 rounded-md text-sm ${
+                className={`px-3 py-1 rounded-md text-sm ${ 
                   selectedTimeRange === 'year'
                     ? 'bg-emerald-500 text-white'
                     : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
@@ -607,13 +633,13 @@ const Reports = () => {
             
             <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
               <div className="flex items-center">
-                <div className="flex-shrink-0 h-12 w-12 bg-yellow-100 dark:bg-yellow-900/30 rounded-full flex items-center justify-center">
-                  <i className="fas fa-clock text-yellow-600 dark:text-yellow-400 text-xl"></i>
+                <div className="flex-shrink-0 h-12 w-12 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
+                  <i className="fas fa-calendar-times text-red-600 dark:text-red-400 text-xl"></i>
                 </div>
                 <div className="ml-4">
-                  <div className="text-sm font-medium text-gray-500 dark:text-gray-400">In Progress</div>
+                  <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Overdue Tasks</div>
                   <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {userTasks.filter(t => t.status === 'in-progress').length}
+                    {userTasks.filter(t => isTaskOverdue(t)).length}
                   </div>
                 </div>
               </div>

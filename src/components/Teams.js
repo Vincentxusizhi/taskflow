@@ -1202,17 +1202,7 @@ const Teams = () => {
               </div>
             </div>
 
-            {/* Team Tasks */}
-            {/* <div className="mb-6">
-              <h4 className="text-lg font-semibold mb-2 dark:text-gray-200">
-                Team Tasks
-              </h4>
-              <div className="bg-gray-50 dark:bg-gray-700 p-6 rounded-lg text-center">
-                <p className="text-gray-500 dark:text-gray-400">
-                  No tasks have been created for this team yet.
-                </p>
-              </div>
-            </div> */}
+            
 
             {/* Team Actions */}
             <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
