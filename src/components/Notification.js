@@ -354,14 +354,14 @@ const Notification = ({ isOpen, onClose, onNotificationsRead }) => {
         )}
       </div>
       
-      <div className="p-3 border-t border-gray-200 dark:border-gray-700 text-center">
+      {/* <div className="p-3 border-t border-gray-200 dark:border-gray-700 text-center">
         <button 
           onClick={() => navigate('/settings')}
           className="text-sm text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300"
         >
           Notification Settings
         </button>
-      </div>
+      </div> */}
     </div>
   );
 };

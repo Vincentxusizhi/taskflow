@@ -232,27 +232,13 @@ const Header = () => {
 
               <div className="ml-4 flex items-center">
                 <img
-                  className="w-8 h-8 rounded"
-                  src="/Logo.png" 
+                  className="h-8"
+                  src="/image.png" 
                   alt="Logo"
                 />
-                <h1 className="ml-3 text-lg font-semibold text-gray-900 dark:text-white">TaskFlow</h1>
-                <div className="ml-4 flex items-center space-x-2">
-                  <span className="text-sm text-gray-500 dark:text-gray-400">Make Teamwork Easier</span>
-                  <i className="fas fa-chevron-down text-xs text-gray-400 dark:text-gray-300"></i>
-                </div>
               </div>
             </div>
             <div className="flex items-center space-x-4">
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Search tasks..."
-                  className="w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
-                />
-                <i className="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-300"></i>
-              </div>
-              
               <div className="relative ml-3">
                 <div 
                   className="flex items-center cursor-pointer"

@@ -157,12 +157,19 @@ const LoginForm = () => {
           </div>
           
           <div className="text-center relative z-10">
+            {/* Original Logo */}
             <img
               src="/Logo.png"
               alt="Company Logo"
-              className="h-24 mx-auto mb-8 rounded-full bg-white p-2 shadow-lg"
+              className="h-24 mx-auto mb-4 rounded-full bg-white p-2 shadow-lg"
             />
-            <h1 className="text-4xl font-bold mb-4">Task Management</h1>
+            {/* Added Image */}
+            <img 
+              src="/image.png"
+              alt="Additional Image"
+              className="h-16 mx-auto mb-8"
+            />
+            <h1 className="text-4xl font-bold mb-4">TaskFlow</h1>
             <p className="text-xl opacity-90 mb-6">Organize your teams and tasks with ease</p>
             <div className="space-y-3 text-left">
               <div className="flex items-center">
