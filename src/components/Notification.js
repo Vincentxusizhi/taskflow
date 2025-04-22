@@ -27,7 +27,7 @@ const Notification = ({ isOpen, onClose, onNotificationsRead }) => {
     };
   }, [isOpen]);
 
-  // 获取通知数据
+  // get notification data
   useEffect(() => {
     const fetchNotifications = async () => {
       if (!currentUser) {
@@ -41,11 +41,11 @@ const Notification = ({ isOpen, onClose, onNotificationsRead }) => {
 
         console.log("Fetching notifications for user:", currentUser.uid);
 
-        // 查询用户的通知
+        // query user's notifications
         const notificationsQuery = query(
           collection(db, 'notifications'),
           where('userId', '==', currentUser.uid),
-          orderBy('createdAt', 'desc'), // 按创建时间降序排序
+          orderBy('createdAt', 'desc'), 
           limit(10)
         );
 
@@ -70,7 +70,7 @@ const Notification = ({ isOpen, onClose, onNotificationsRead }) => {
         } catch (err) {
           console.error('Error fetching notifications with orderBy:', err);
           
-          // 尝试不使用orderBy来获取通知
+          
           if (err.code === 'failed-precondition' || err.message.includes('index')) {
             try {
               console.log("Trying fallback query without orderBy");
@@ -97,12 +97,12 @@ const Notification = ({ isOpen, onClose, onNotificationsRead }) => {
                 });
               });
               
-              // 客户端手动排序
+                
               fallbackData.sort((a, b) => b.createdAt - a.createdAt);
               
               setNotifications(fallbackData);
               
-              // 显示索引错误提示
+              // show index error prompt
               const indexUrl = err.message.match(/https:\/\/console\.firebase\.google\.com[^\s]*/);
               setError(
                 <div>
@@ -138,7 +138,7 @@ const Notification = ({ isOpen, onClose, onNotificationsRead }) => {
     }
   }, [currentUser, isOpen, lastRefresh]);
 
-  // 处理点击外部关闭通知面板
+  // handle click outside to close notification panel
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (notificationRef.current && !notificationRef.current.contains(event.target) && 
@@ -156,7 +156,7 @@ const Notification = ({ isOpen, onClose, onNotificationsRead }) => {
     };
   }, [isOpen, onClose]);
 
-  // 标记通知为已读
+  // mark notification as read
   const markAsRead = async (notificationId) => {
     try {
       const notificationRef = doc(db, 'notifications', notificationId);
@@ -165,7 +165,7 @@ const Notification = ({ isOpen, onClose, onNotificationsRead }) => {
         readAt: Timestamp.now()
       });
 
-      // 更新本地状态
+      // update local state
       setNotifications(prev => 
         prev.map(notification => 
           notification.id === notificationId 
@@ -178,14 +178,14 @@ const Notification = ({ isOpen, onClose, onNotificationsRead }) => {
     }
   };
 
-  // 标记所有通知为已读
+  // mark all notifications as read
   const markAllAsRead = async () => {
     try {
       const unreadNotifications = notifications.filter(notification => !notification.read);
       
       if (unreadNotifications.length === 0) return;
       
-      // 批量更新 Firestore
+      // batch update Firestore
       const updatePromises = unreadNotifications.map(notification => 
         updateDoc(doc(db, 'notifications', notification.id), {
           read: true,
@@ -195,12 +195,12 @@ const Notification = ({ isOpen, onClose, onNotificationsRead }) => {
       
       await Promise.all(updatePromises);
       
-      // 更新本地状态
+      // update local state
       setNotifications(prev => 
         prev.map(notification => ({ ...notification, read: true, readAt: new Date() }))
       );
       
-      // 调用回调函数通知 Header 组件
+      // call callback function to notify Header component
       if (onNotificationsRead) {
         onNotificationsRead();
       }
@@ -209,25 +209,22 @@ const Notification = ({ isOpen, onClose, onNotificationsRead }) => {
     }
   };
 
-  // 修改通知点击处理函数，只标记为已读而不导航
+  
   const handleNotificationClick = async (notification) => {
-    // 如果未读，标记为已读
+    
     if (!notification.read) {
       try {
         await markAsRead(notification.id);
         
-        // 可以添加一个成功提示（可选）
-        // toast.success("Notification marked as read");
       } catch (error) {
         console.error('Error marking notification as read:', error);
       }
     }
     
-    // 不再导航到其他页面
-    // 不再关闭通知面板
+    
   };
 
-  // 格式化时间
+  // format time
   const formatTime = (date) => {
     if (!date) return '';
     
@@ -255,7 +252,7 @@ const Notification = ({ isOpen, onClose, onNotificationsRead }) => {
     }
   };
 
-  // 获取通知图标
+  // get notification icon
   const getNotificationIcon = (type) => {
     switch (type) {
       case 'task_assigned':

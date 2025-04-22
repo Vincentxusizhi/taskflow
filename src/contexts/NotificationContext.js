@@ -1,10 +1,10 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 
-// 创建通知上下文
+// create notification context
 const NotificationContext = createContext();
 
-// 通知样式
+// notification styles
 const styles = {
   container: {
     position: 'fixed',
@@ -58,7 +58,7 @@ const styles = {
   }
 };
 
-// 定义通知类型
+// define notification types
 const NOTIFICATION_TYPES = {
   INFO: {
     backgroundColor: 'rgb(59, 130, 246)',
@@ -98,11 +98,11 @@ const NOTIFICATION_TYPES = {
   },
 };
 
-// 通知提供者组件
+// notification provider component
 export const NotificationProvider = ({ children }) => {
   const [notifications, setNotifications] = useState([]);
 
-  // 添加通知
+  // add notification
   const addNotification = (type, message, title = '', duration = 5000) => {
     const id = Date.now();
     setNotifications(prevNotifications => [
@@ -110,7 +110,7 @@ export const NotificationProvider = ({ children }) => {
       { id, type, message, title, duration }
     ]);
 
-    // 自动关闭通知
+    // auto close notification
     if (duration !== 0) {
       setTimeout(() => {
         removeNotification(id);
@@ -120,14 +120,14 @@ export const NotificationProvider = ({ children }) => {
     return id;
   };
 
-  // 移除通知
+  // remove notification
   const removeNotification = id => {
     setNotifications(prevNotifications => 
       prevNotifications.filter(notification => notification.id !== id)
     );
   };
 
-  // 便捷方法
+  
   const showSuccess = (message, title, duration) => 
     addNotification('SUCCESS', message, title, duration);
   

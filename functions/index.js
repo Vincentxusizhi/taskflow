@@ -53,9 +53,9 @@ exports.createTask = taskFunctions.createTask;
 exports.updateTask = taskFunctions.updateTask;
 exports.deleteTask = taskFunctions.deleteTask;
 
-// 通知相关的云函数
+// send notification
 exports.sendNotification = functions.https.onCall(async (request) => {
-  // 验证用户是否已登录
+  // verify if user is logged in
   if (!request.auth) {
     throw new functions.https.HttpsError(
       'unauthenticated',
@@ -63,7 +63,7 @@ exports.sendNotification = functions.https.onCall(async (request) => {
     );
   }
 
-  // 验证请求数据
+  // verify request data
   if (!request.data.userId || !request.data.title || !request.data.message || !request.data.type) {
     throw new functions.https.HttpsError(
       'invalid-argument',
@@ -72,7 +72,7 @@ exports.sendNotification = functions.https.onCall(async (request) => {
   }
 
   try {
-    // 创建通知
+    // create notification
     await admin.firestore().collection('notifications').add({
       userId: request.data.userId,
       title: request.data.title,
@@ -96,9 +96,9 @@ exports.sendNotification = functions.https.onCall(async (request) => {
   }
 });
 
-// 获取未读通知数量
+// get unread notifications count
 exports.getUnreadNotificationsCount = functions.https.onCall(async (request) => {
-  // 验证用户是否已登录
+  // verify if user is logged in
   if (!request.auth) {
     throw new functions.https.HttpsError(
       'unauthenticated',
@@ -109,7 +109,7 @@ exports.getUnreadNotificationsCount = functions.https.onCall(async (request) => 
   try {
     const userId = request.auth.uid;
     
-    // 查询未读通知
+    // query unread notifications
     const querySnapshot = await admin.firestore().collection('notifications')
       .where('userId', '==', userId)
       .where('read', '==', false)
@@ -125,9 +125,9 @@ exports.getUnreadNotificationsCount = functions.https.onCall(async (request) => 
   }
 });
 
-// 标记通知为已读
+// mark notification as read
 exports.markNotificationAsRead = functions.https.onCall(async (request) => {
-  // 验证用户是否已登录
+  // verify if user is logged in
   if (!request.auth) {
     throw new functions.https.HttpsError(
       'unauthenticated',
@@ -135,7 +135,7 @@ exports.markNotificationAsRead = functions.https.onCall(async (request) => {
     );
   }
 
-  // 验证请求数据
+  // verify request data
   if (!request.data.notificationId) {
     throw new functions.https.HttpsError(
       'invalid-argument',
@@ -146,7 +146,7 @@ exports.markNotificationAsRead = functions.https.onCall(async (request) => {
   try {
     const userId = request.auth.uid;
     
-    // 获取通知文档
+    // get notification document
     const notificationRef = admin.firestore().collection('notifications').doc(request.data.notificationId);
     const notificationDoc = await notificationRef.get();
     
@@ -157,7 +157,7 @@ exports.markNotificationAsRead = functions.https.onCall(async (request) => {
       );
     }
     
-    // 验证通知属于当前用户
+    // verify if notification belongs to current user
     if (notificationDoc.data().userId !== userId) {
       throw new functions.https.HttpsError(
         'permission-denied',
@@ -165,7 +165,7 @@ exports.markNotificationAsRead = functions.https.onCall(async (request) => {
       );
     }
     
-    // 标记为已读
+    // mark as read
     await notificationRef.update({
       read: true,
       readAt: admin.firestore.FieldValue.serverTimestamp()
@@ -181,9 +181,9 @@ exports.markNotificationAsRead = functions.https.onCall(async (request) => {
   }
 });
 
-// 标记所有通知为已读
+// mark all notifications as read
 exports.markAllNotificationsAsRead = functions.https.onCall(async (request) => {
-  // 验证用户是否已登录
+  // verify if user is logged in
   if (!request.auth) {
     throw new functions.https.HttpsError(
       'unauthenticated',
@@ -194,13 +194,13 @@ exports.markAllNotificationsAsRead = functions.https.onCall(async (request) => {
   try {
     const userId = request.auth.uid;
     
-    // 获取用户的所有未读通知
+    // get all unread notifications of current user
     const notificationsSnapshot = await admin.firestore().collection('notifications')
       .where('userId', '==', userId)
       .where('read', '==', false)
       .get();
     
-    // 批量更新通知
+    // batch update notifications
     const batch = admin.firestore().batch();
     const now = admin.firestore.FieldValue.serverTimestamp();
     
@@ -227,19 +227,19 @@ exports.markAllNotificationsAsRead = functions.https.onCall(async (request) => {
 });
 
 exports.updateUnreadNotifications = onDocumentUpdated('notifications/{notificationId}', async (event) => {
-  // 获取通知数据
+  // get notification data
   const notification = event.data.after.data();
   
-  // 如果没有通知数据或已读状态没有变化，则不处理
+  // if there is no notification data or read status is not changed, do not process
   if (!notification || (event.data.before && event.data.before.data().read === notification.read)) {
     return null;
   }
 
-  // 获取用户 ID
+  // get user ID
   const userId = notification.userId;
   
   try {
-    // 计算用户的未读通知数量
+    // calculate unread notifications count
     const snapshot = await admin.firestore().collection('notifications')
       .where('userId', '==', userId)
       .where('read', '==', false)
@@ -247,7 +247,7 @@ exports.updateUnreadNotifications = onDocumentUpdated('notifications/{notificati
     
     const unreadCount = snapshot.size;
     
-    // 更新用户的资料，记录未读通知数量
+    // update user profile, record unread notifications count
     await admin.firestore().collection('users').doc(userId).update({
       unreadNotifications: unreadCount
     });

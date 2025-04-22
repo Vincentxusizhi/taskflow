@@ -9,11 +9,11 @@ import Timeline from './TimeLine';
 import Calendar from './Calendar';
 
 
-// 初始化 Firebase Functions
+// initialize Firebase Functions
 const functions = getFunctions();
 
 const MainPage = () => {
-  // 获取URL参数中的teamId
+  // get teamId from URL parameters
   const { teamId } = useParams();
   const navigate = useNavigate();
   
@@ -48,13 +48,13 @@ const MainPage = () => {
   const sidebarRef = useRef(null);
   const [refreshKey, setRefreshKey] = useState(0);
   
-  // 添加存储用户所有团队的状态
+  
   const [userTeams, setUserTeams] = useState([]);
   const [loadingTeams, setLoadingTeams] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isManager, setIsManager] = useState(false);
 
-  // 获取团队数据
+  // fetch team data
   const fetchTeamData = useCallback(async () => {
     if (!teamId) {
       console.log("No teamId provided");
@@ -80,7 +80,7 @@ const MainPage = () => {
           ...data
         });
         
-        // 获取团队成员信息
+        // get team members data
         if (data.membersData && Array.isArray(data.membersData)) {
           setTeamMembers(data.membersData);
         } else {
@@ -90,7 +90,7 @@ const MainPage = () => {
         }
       } else {
         console.error('Team not found');
-        // 如果团队不存在，返回到团队列表页面
+        // if team not found, go back to team list page
         navigate('/Teams');
       }
     } catch (error) {

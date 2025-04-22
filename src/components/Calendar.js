@@ -4,7 +4,7 @@ import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firesto
 import Header from './Header';
 
 const Calendar = () => {
-  // 状态管理
+ 
   const [loading, setLoading] = useState(true);
   const [userData, setUserData] = useState(null);
   const [userTeams, setUserTeams] = useState([]);
@@ -15,9 +15,9 @@ const Calendar = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
-  const [showOnlyMyTasks, setShowOnlyMyTasks] = useState(false); // 新增状态：是否只显示分配给我的任务
+  const [showOnlyMyTasks, setShowOnlyMyTasks] = useState(false); 
   
-  // 获取用户数据和团队
+  // get user and team data
   useEffect(() => {
     const fetchUserData = async () => {
       if (!auth.currentUser) return;
@@ -26,7 +26,7 @@ const Calendar = () => {
         setLoading(true);
         const userId = auth.currentUser.uid;
         
-        // 获取用户数据
+        // get user data
         const userRef = doc(db, 'users', userId);
         const userSnap = await getDoc(userRef);
         
@@ -37,7 +37,7 @@ const Calendar = () => {
           };
           setUserData(userData);
           
-          // 获取用户的团队
+          // get team
           const teamsQuery = query(
             collection(db, 'teams'),
             where('members', 'array-contains', userId)
@@ -55,7 +55,7 @@ const Calendar = () => {
           
           setUserTeams(teamsData);
           
-          // 获取所有团队的任务
+          // get all task
           await fetchAllTeamTasks(teamsData);
         }
       } catch (error) {
@@ -68,7 +68,7 @@ const Calendar = () => {
     fetchUserData();
   }, []);
   
-  // 获取所有团队的任务
+  // fetch all tasks
   const fetchAllTeamTasks = async (teams) => {
     if (!teams || teams.length === 0) return;
     
@@ -83,7 +83,7 @@ const Calendar = () => {
           const teamData = teamSnap.data();
           
           if (teamData.tasks && Array.isArray(teamData.tasks)) {
-            // 为每个任务添加团队信息
+            // add team info
             const tasksWithTeamInfo = teamData.tasks.map(task => ({
               ...task,
               teamId: team.id,
@@ -102,25 +102,24 @@ const Calendar = () => {
     }
   };
   
-  // 根据团队ID生成随机颜色
+  // get random color
   const getRandomColor = (teamId) => {
     const colors = [
-      '#10B981', // 绿色
-      '#3B82F6', // 蓝色
-      '#8B5CF6', // 紫色
-      '#EC4899', // 粉色
-      '#F59E0B', // 橙色
-      '#EF4444', // 红色
-      '#06B6D4', // 青色
-      '#6366F1'  // 靛蓝色
+      '#10B981', 
+      '#3B82F6', 
+      '#EC4899', 
+      '#F59E0B', 
+      '#EF4444', 
+      '#06B6D4', 
+      '#6366F1'  
     ];
     
-    // 使用团队ID作为种子来选择颜色，确保同一个团队始终获得相同的颜色
+    
     const index = teamId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length;
     return colors[index];
   };
   
-  // 检查任务是否分配给当前用户
+  // check task assigned
   const isTaskAssignedToMe = (task) => {
     if (!userData || !userData.uid) return false;
     if (!task.assignees || !Array.isArray(task.assignees)) return false;
@@ -131,31 +130,31 @@ const Calendar = () => {
     );
   };
   
-  // 过滤任务
+  // filter task
   const filteredTasks = tasks
-    // 先按团队筛选
+    // base on team
     .filter(task => selectedTeam === 'all' || task.teamId === selectedTeam)
-    // 再按分配筛选
+    // based on assignee
     .filter(task => !showOnlyMyTasks || isTaskAssignedToMe(task));
   
-  // 处理任务筛选器切换
+  // handle task filter
   const toggleMyTasksFilter = () => {
     setShowOnlyMyTasks(!showOnlyMyTasks);
   };
   
-  // 当前显示的日期范围（根据视图模式）
+  // get date range
   const getDateRange = () => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
     
     if (viewMode === 'month') {
-      // 获取当月第一天
+      // get first day
       const firstDay = new Date(year, month, 1);
-      // 获取当月最后一天
+      // get last day
       const lastDay = new Date(year, month + 1, 0);
       
-      // 调整为完整的日历周（前后填充）
-      const firstDayOfWeek = firstDay.getDay(); // 0 是周日，1 是周一
+      // adjust to full week
+      const firstDayOfWeek = firstDay.getDay(); 
       const start = new Date(firstDay);
       start.setDate(firstDay.getDate() - firstDayOfWeek);
       
@@ -165,7 +164,7 @@ const Calendar = () => {
       
       return { start, end };
     } else if (viewMode === 'week') {
-      // 获取当前日期所在周的周日
+      
       const dayOfWeek = currentDate.getDay();
       const start = new Date(currentDate);
       start.setDate(currentDate.getDate() - dayOfWeek);
@@ -174,14 +173,14 @@ const Calendar = () => {
       end.setDate(start.getDate() + 6);
       
       return { start, end };
-    } else { // day
+    } else { 
       const start = new Date(currentDate);
       const end = new Date(currentDate);
       return { start, end };
     }
   };
   
-  // 生成日期数组
+  // generate dates
   const generateDates = () => {
     const { start, end } = getDateRange();
     const dates = [];
@@ -195,14 +194,14 @@ const Calendar = () => {
     return dates;
   };
   
-  // 计算一个月有多少周
+  // get weeks in month
   const getWeeksInMonth = (dates) => {
     if (!dates.length) return 0;
     
     return Math.ceil(dates.length / 7);
   };
   
-  // 格式化日期展示
+  // format datea
   const formatDate = (date, format = 'short') => {
     if (format === 'full') {
       return date.toLocaleDateString(undefined, { 
@@ -226,7 +225,7 @@ const Calendar = () => {
     }
   };
   
-  // 导航到前一个时间段
+  // navigate previous
   const navigatePrevious = () => {
     const newDate = new Date(currentDate);
     
@@ -241,7 +240,7 @@ const Calendar = () => {
     setCurrentDate(newDate);
   };
   
-  // 导航到后一个时间段
+  // navigate next
   const navigateNext = () => {
     const newDate = new Date(currentDate);
     
@@ -256,36 +255,36 @@ const Calendar = () => {
     setCurrentDate(newDate);
   };
   
-  // 跳转到今天
+  // go ttoday
   const goToToday = () => {
     setCurrentDate(new Date());
   };
   
-  // 切换视图模式
+  // changeViewMode
   const changeViewMode = (mode) => {
     setViewMode(mode);
   };
   
-  // 处理日期点击
+  // handle date click
   const handleDateClick = (date) => {
     setSelectedDate(date);
     
-    // 如果是日视图，更新当前日期
+    
     if (viewMode === 'day') {
       setCurrentDate(date);
     }
   };
   
-  // 处理任务点击
+  // handle task click
   const handleTaskClick = (task) => {
     setSelectedTask(task);
     setShowTaskModal(true);
   };
   
-  // 计算任务位于哪一天
+  // get task events
   const getTaskEvents = (date) => {
     return filteredTasks.filter(task => {
-      // 解析任务开始日期
+      // parse task start date
       let taskStart;
       if (task.start_date) {
         if (typeof task.start_date.toDate === 'function') {
@@ -299,12 +298,12 @@ const Calendar = () => {
         return false;
       }
       
-      // 计算结束日期
+      // calculate end date
       const duration = task.duration || 1;
       const taskEnd = new Date(taskStart);
       taskEnd.setDate(taskStart.getDate() + duration - 1);
       
-      // 检查任务日期是否与当前日期相交
+      // check task date
       return (
         date.getFullYear() === taskStart.getFullYear() &&
         date.getMonth() === taskStart.getMonth() &&
@@ -315,14 +314,14 @@ const Calendar = () => {
     });
   };
   
-  // 生成当前视图的日历
+  // generate dates
   const dates = generateDates();
   const weeksCount = getWeeksInMonth(dates);
   
-  // 生成周标签
+  // generate weekday labels
   const weekdayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   
-  // 检查日期是否是今天
+  // check is today
   const isToday = (date) => {
     const today = new Date();
     return date.getDate() === today.getDate() &&
@@ -330,23 +329,23 @@ const Calendar = () => {
       date.getFullYear() === today.getFullYear();
   };
   
-  // 检查日期是否是当前月
+  // check is current month
   const isCurrentMonth = (date) => {
     return date.getMonth() === currentDate.getMonth();
   };
   
-  // 检查日期是否是选中的日期
+  // check is selected date
   const isSelectedDate = (date) => {
     return date.getDate() === selectedDate.getDate() &&
       date.getMonth() === selectedDate.getMonth() &&
       date.getFullYear() === selectedDate.getFullYear();
   };
   
-  // 渲染月视图
+  // render month view
   const renderMonthView = () => {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-        {/* 周标签 */}
+        {/* week label */}
         <div className="grid grid-cols-7 border-b border-gray-200 dark:border-gray-700">
           {weekdayLabels.map((day, index) => (
             <div key={day} className="py-2 text-sm font-medium text-center text-gray-500 dark:text-gray-400">
@@ -355,7 +354,7 @@ const Calendar = () => {
           ))}
         </div>
         
-        {/* 日期网格 */}
+        {/* date grid */}
         <div className="grid grid-cols-7 auto-rows-auto">
           {dates.map((date, index) => {
             const dateEvents = getTaskEvents(date);
@@ -392,7 +391,7 @@ const Calendar = () => {
                   )}
                 </div>
                 
-                {/* 任务列表 */}
+                {/* task list */}
                 <div className="space-y-1 mt-1 overflow-y-auto max-h-[80px]">
                   {dateEvents.slice(0, 3).map((event, idx) => (
                     <div 
@@ -421,7 +420,7 @@ const Calendar = () => {
     );
   };
   
-  // 渲染周视图
+  // render week view
   const renderWeekView = () => {
     const { start } = getDateRange();
     const weekDates = Array(7).fill(0).map((_, i) => {
@@ -430,7 +429,7 @@ const Calendar = () => {
       return date;
     });
     
-    // 每小时的时间刻度
+    // hour labels
     const hourLabels = Array(24).fill(0).map((_, i) => {
       const hour = i % 12 === 0 ? 12 : i % 12;
       const period = i < 12 ? 'AM' : 'PM';
@@ -439,7 +438,7 @@ const Calendar = () => {
     
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-        {/* 星期标题 */}
+        {/* week label*/}
         <div className="grid grid-cols-8 border-b border-gray-200 dark:border-gray-700">
           <div className="py-2 text-sm font-medium text-center text-gray-500 dark:text-gray-400">
             Time
@@ -460,10 +459,10 @@ const Calendar = () => {
           ))}
         </div>
         
-        {/* 时间表格 */}
+        {/* time table */}
         <div className="overflow-y-auto max-h-[calc(100vh-300px)]">
           <div className="relative grid grid-cols-8">
-            {/* 时间刻度 */}
+            {/* time scale */}
             <div className="border-r border-gray-200 dark:border-gray-700">
               {hourLabels.map((hour, index) => (
                 <div 
@@ -475,10 +474,10 @@ const Calendar = () => {
               ))}
             </div>
             
-            {/* 每天的时间表 */}
+            {/* every day */}
             {weekDates.map((date, dateIndex) => (
               <div key={dateIndex} className="relative">
-                {/* 时间框 */}
+                {/* timebox */}
                 {hourLabels.map((_, hourIndex) => (
                   <div 
                     key={hourIndex} 
@@ -486,9 +485,9 @@ const Calendar = () => {
                   ></div>
                 ))}
                 
-                {/* 当天的任务 */}
+                {/* today tasks */}
                 {getTaskEvents(date).map((event, eventIndex) => {
-                  // 解析任务开始时间
+                  // parse task start date
                   let startDate;
                   if (event.start_date) {
                     if (typeof event.start_date.toDate === 'function') {
@@ -502,11 +501,11 @@ const Calendar = () => {
                     startDate = new Date();
                   }
                   
-                  // 计算视觉位置
+                  // calculate visual position
                   const hourHeight = 64; // 16px * 4 = 64px for each hour (matches h-16)
                   const startHour = startDate.getHours() + startDate.getMinutes() / 60;
-                  const duration = event.duration || 1; // 使用天数作为近似参数
-                  const heightInHours = Math.min(duration * 4, 24 - startHour); // 限制高度不超过当天
+                  const duration = event.duration || 1; 
+                  const heightInHours = Math.min(duration * 4, 24 - startHour); 
                   
                   const top = startHour * hourHeight;
                   const height = heightInHours * hourHeight;
@@ -537,9 +536,9 @@ const Calendar = () => {
     );
   };
   
-  // 渲染日视图
+  // render day view
   const renderDayView = () => {
-    // 每小时的时间刻度
+    // hour labels
     const hourLabels = Array(24).fill(0).map((_, i) => {
       const hour = i % 12 === 0 ? 12 : i % 12;
       const period = i < 12 ? 'AM' : 'PM';
@@ -550,7 +549,7 @@ const Calendar = () => {
     
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-        {/* 日期标题 */}
+        {/* date title */}
         <div className="py-3 px-4 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-700">
           <h3 className="text-lg font-medium text-gray-900 dark:text-white">
             {formatDate(currentDate, 'full')}
@@ -562,10 +561,10 @@ const Calendar = () => {
           </h3>
         </div>
         
-        {/* 时间表格 */}
+        {/* time table */}
         <div className="overflow-y-auto max-h-[calc(100vh-300px)]">
           <div className="relative grid grid-cols-12">
-            {/* 时间刻度 */}
+            {/* time scale */}
             <div className="col-span-1 border-r border-gray-200 dark:border-gray-700">
               {hourLabels.map((hour, index) => (
                 <div 
@@ -577,9 +576,9 @@ const Calendar = () => {
               ))}
             </div>
             
-            {/* 当天的任务区域 */}
+            {/* today tasks */}
             <div className="col-span-11 relative">
-              {/* 时间框 */}
+              {/* timebox */}
               {hourLabels.map((_, hourIndex) => (
                 <div 
                   key={hourIndex} 
@@ -587,9 +586,9 @@ const Calendar = () => {
                 ></div>
               ))}
               
-              {/* 任务 */}
+              {/* tasks */}
               {dateEvents.map((event, eventIndex) => {
-                // 解析任务开始时间
+                // parse task start date
                 let startDate;
                 if (event.start_date) {
                   if (typeof event.start_date.toDate === 'function') {
@@ -603,11 +602,11 @@ const Calendar = () => {
                   startDate = new Date();
                 }
                 
-                // 计算视觉位置
+                // calculate visual position
                 const hourHeight = 80; // 20px * 4 = 80px for each hour (matches h-20)
                 const startHour = startDate.getHours() + startDate.getMinutes() / 60;
                 const duration = event.duration || 1;
-                // 近似转换天数到小时，为显示目的
+                
                 const heightInHours = Math.min(duration * 3, 24 - startHour);
                 
                 const top = startHour * hourHeight;
@@ -646,11 +645,11 @@ const Calendar = () => {
     );
   };
   
-  // 渲染任务详情模态框
+  // render task modal
   const renderTaskModal = () => {
     if (!selectedTask) return null;
     
-    // 解析任务开始日期
+    // parse task start date
     let startDate;
     if (selectedTask.start_date) {
       if (typeof selectedTask.start_date.toDate === 'function') {
@@ -664,11 +663,11 @@ const Calendar = () => {
       startDate = new Date();
     }
     
-    // 计算结束日期
+    // calculate end date
     const endDate = new Date(startDate);
     endDate.setDate(startDate.getDate() + (selectedTask.duration || 1) - 1);
     
-    // 状态标签样式
+    // status label style
     const getStatusColor = (status) => {
       switch (status) {
         case 'completed':
@@ -682,7 +681,7 @@ const Calendar = () => {
       }
     };
     
-    // 优先级标签样式
+    // priority label style
     const getPriorityColor = (priority) => {
       switch (priority) {
         case 'high':
@@ -699,19 +698,19 @@ const Calendar = () => {
     return (
       <div className="fixed z-10 inset-0 overflow-y-auto" aria-labelledby="task-modal-title" role="dialog" aria-modal="true">
         <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-          {/* 背景遮罩 */}
+          {/* background mask */}
           <div 
             className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" 
             aria-hidden="true"
             onClick={() => setShowTaskModal(false)}
           ></div>
           
-          {/* 模态框居中技巧 */}
+          {/* modal center trick */}
           <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
           
-          {/* 模态框内容 */}
+          {/* modal content */}
           <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-            {/* 标题栏 */}
+            {/* title bar */}
             <div className="py-4 px-6 border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white" id="task-modal-title">
@@ -728,10 +727,10 @@ const Calendar = () => {
               </div>
             </div>
             
-            {/* 任务详情 */}
+            {/* task details */}
             <div className="py-4 px-6">
               <div className="space-y-4">
-                {/* 任务名称和状态 */}
+                {/* task name and status */}
                 <div>
                   <h4 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
                     {selectedTask.text}
@@ -753,7 +752,7 @@ const Calendar = () => {
                   </div>
                 </div>
                 
-                {/* 日期和进度 */}
+                {/* date and progress */}
                 <div className="space-y-2">
                   <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
                     <i className="fas fa-calendar-alt mr-2"></i>
@@ -780,7 +779,7 @@ const Calendar = () => {
                   </div>
                 </div>
                 
-                {/* 描述 */}
+                {/* description */}
                 {selectedTask.description && (
                   <div>
                     <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</h5>
@@ -790,13 +789,13 @@ const Calendar = () => {
                   </div>
                 )}
                 
-                {/* 负责人 */}
+                {/* assignees */}
                 <div>
                   <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Assignees</h5>
                   {selectedTask.assignees && selectedTask.assignees.length > 0 ? (
                     <div className="space-y-2">
                       {selectedTask.assignees.map((assignee, index) => {
-                        // 检查是否是当前用户
+                        // check if current user
                         const isCurrentUser = userData && 
                           ((typeof assignee === 'string' && assignee === userData.uid) || 
                            (assignee.uid === userData.uid));
@@ -840,7 +839,7 @@ const Calendar = () => {
               </div>
             </div>
             
-            {/* 模态框底部 */}
+            {/* modal bottom */}
             <div className="bg-gray-50 dark:bg-gray-700 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
               <button
                 type="button"
@@ -872,7 +871,7 @@ const Calendar = () => {
       <Header />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* 日历标题和工具栏 */}
+        {/* calendar title and toolbar */}
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -886,7 +885,7 @@ const Calendar = () => {
           </div>
           
           <div className="flex items-center space-x-4 mt-4 md:mt-0">
-            {/* 日历导航按钮 */}
+            {/* calendar navigation buttons */}
             <div className="flex bg-white dark:bg-gray-800 rounded-lg shadow-sm">
               <button
                 onClick={goToToday}
@@ -952,7 +951,7 @@ const Calendar = () => {
               </select>
             </div>
             
-            {/* 只显示我的任务开关 */}
+            {/* show my tasks only switch */}
             <div className="flex items-center bg-white dark:bg-gray-800 rounded-lg shadow-sm px-4 py-2">
               <span className="text-sm font-medium text-gray-700 dark:text-gray-200 mr-3">
                 My tasks only
@@ -975,14 +974,14 @@ const Calendar = () => {
           </div>
         </div>
         
-        {/* 日历视图 */}
+        {/* calendar view */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
           {viewMode === 'month' && renderMonthView()}
           {viewMode === 'week' && renderWeekView()}
           {viewMode === 'day' && renderDayView()}
         </div>
         
-        {/* 任务详情模态框 */}
+        {/* task details modal */}
         {showTaskModal && renderTaskModal()}
       </div>
     </div>

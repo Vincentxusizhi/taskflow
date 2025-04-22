@@ -3,14 +3,14 @@ import { auth } from './firebase';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import LoginForm from './components/LoginForm';
 import MainPage from './components/Tasks';
-import Calendar from './components/Calendar'; // 导入 Calendar 组件
-import Teams from './components/Teams'; // 导入 Teams 组件
-import UserProfile from './components/UserProfile'; // 导入 UserProfile 组件
+import Calendar from './components/Calendar'; 
+import Teams from './components/Teams';
+import UserProfile from './components/UserProfile'; 
 import Settings from './components/Settings';
-import Dashboard from './components/Dashboard'; // 导入 Dashboard 组件
-import Reports from './components/Reports'; // 导入 Reports 组件
+import Dashboard from './components/Dashboard'; 
+import Reports from './components/Reports'; 
 import { ThemeProvider } from './contexts/ThemeContext';
-import { NotificationProvider } from './contexts/NotificationContext'; // 引入通知提供者
+import { NotificationProvider } from './contexts/NotificationContext'; 
 
 
 function App() {

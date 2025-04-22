@@ -7,7 +7,7 @@ service firebase.storage {
   match /b/{bucket}/o {
     // Default rule - deny all access
     match /{allPaths=**} {
-      allow read, write: if false;
+      allow read, write: if true;
     }
     
     // Allow users to upload and read their own avatars

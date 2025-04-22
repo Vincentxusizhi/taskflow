@@ -5,7 +5,7 @@ import { ref as storageRef, uploadBytesResumable, getDownloadURL, deleteObject }
 import { db, auth, storage } from '../firebase';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 
-// 初始化 Firebase Functions
+// Init Firebase Functions
 const functions = getFunctions();
 
 const Timeline = ({ teamId, refreshKey = 0 }) => {
@@ -46,17 +46,14 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadError, setUploadError] = useState(null);
-  // 新增状态变量用于管理通知消息
   const [notification, setNotification] = useState({
     show: false,
     message: '',
     type: 'error' // 'error', 'warning', 'info', 'success'
   });
-  // 新增状态变量用于文件删除确认
   const [showFileDeleteConfirm, setShowFileDeleteConfirm] = useState(false);
   const [fileToDelete, setFileToDelete] = useState(null);
 
-  // 显示通知的辅助函数
   const showNotification = (message, type = 'error') => {
     setNotification({
       show: true,
@@ -64,18 +61,18 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
       type
     });
     
-    // 3秒后自动关闭通知
+    
     setTimeout(() => {
       setNotification(prev => ({...prev, show: false}));
     }, 5000);
   };
 
-  // 关闭通知的辅助函数
+ 
   const closeNotification = () => {
     setNotification(prev => ({...prev, show: false}));
   };
 
-  // Fetch tasks from Firestore - 修改以包含refreshKey依赖
+  // Fetch tasks from Firestore 
   useEffect(() => {
     const fetchTasks = async () => {
       if (!teamId) {
@@ -117,7 +114,7 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
     };
 
     fetchTasks();
-  }, [teamId, refreshKey]); // 添加refreshKey作为依赖项
+  }, [teamId, refreshKey]); // add refreshKey as a dependency
 
   // Get current user role in the team
   useEffect(() => {
@@ -125,7 +122,7 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
       if (!teamId) return;
       
       try {
-        // 直接使用已导入的 auth 对象，而不是调用 getAuth()
+        
         const user = auth.currentUser;
         
         if (user) {
@@ -142,7 +139,7 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
             console.log("Members data:", teamData.membersData);
             
             if (teamData.membersData && Array.isArray(teamData.membersData)) {
-              // 在数组中查找当前用户
+              // Find current user in array
               const memberData = teamData.membersData.find(member => member.uid === user.uid);
               if (memberData) {
                 const role = memberData.role;
@@ -152,7 +149,7 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
                 console.log("User not found in team members array");
               }
             } else if (teamData.membersData && typeof teamData.membersData === 'object') {
-              // 保留原来的对象查找逻辑作为备份
+              // Keep the original object lookup logic as a backup
               if (teamData.membersData[user.uid]) {
                 const role = teamData.membersData[user.uid].role;
                 console.log("User role found in object:", role);
@@ -177,7 +174,7 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
     fetchUserRole();
   }, [teamId]);
 
-  // 在 useEffect 中获取团队成员
+  // Getting team members in useEffect
   useEffect(() => {
     const fetchTeamMembers = async () => {
       if (!teamId) return;
@@ -200,7 +197,7 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
     fetchTeamMembers();
   }, [teamId]);
 
-  // 初始化选中的负责人
+  // Initialize selected assignees
   useEffect(() => {
     if (editedTask && editedTask.assignees) {
       setSelectedAssignees(editedTask.assignees);
@@ -209,7 +206,7 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
     }
   }, [editedTask]);
 
-  // 在任务详情打开时获取评论
+  // Get comments when task details open
   useEffect(() => {
     const fetchComments = async () => {
       if (!selectedTask) return;
@@ -220,7 +217,7 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
         
         if (teamSnap.exists()) {
           const teamData = teamSnap.data();
-          // 获取任务的评论，如果没有则设为空数组
+          // Get the comments for the task, or set to an empty array if there are none.
           const taskComments = teamData.tasks.find(t => t.id === selectedTask.id)?.comments || [];
           setComments(taskComments);
         }
@@ -234,7 +231,7 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
     }
   }, [selectedTask, showTaskDetails, teamId]);
 
-  // 在任务详情打开时获取文件列表
+  // Getting a list of files when task details are open
   useEffect(() => {
     const fetchTaskFiles = async () => {
       if (!selectedTask) return;
@@ -245,7 +242,7 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
         
         if (teamSnap.exists()) {
           const teamData = teamSnap.data();
-          // 获取任务的文件，如果没有则设为空数组
+          // Get the files for the task, or an empty array if there are none.
           const files = teamData.tasks.find(t => t.id === selectedTask.id)?.files || [];
           setTaskFiles(files);
         }
@@ -269,7 +266,7 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
 
   const handleDrop = async (newStatus) => {
     if (draggedTask) {
-      // 检查当前用户是否是任务负责人
+      // Check if the current user is the task manager
       const isAssignee = draggedTask.assignees && 
                         draggedTask.assignees.some(assignee => assignee.uid === currentUser?.uid);
       
@@ -278,9 +275,9 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
         return;
       }
       
-      // 允许更新：任务负责人可以更改任务状态，无论他们是否是管理员或经理
+      // Allow updates: Task owners can change the status of a task, regardless of whether they are administrators or managers
       
-      // 更新本地状态
+      // update local state
       const updatedTasks = tasks.map((task) => {
         if (task.id === draggedTask.id) {
           return { ...task, status: newStatus };
@@ -290,7 +287,7 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
       setTasks(updatedTasks);
       
       try {
-        // 使用云函数更新任务状态
+        // use  cloud function to update task status
         const updateTaskFunction = httpsCallable(functions, 'updateTask');
         const result = await updateTaskFunction({
           teamId: teamId,
@@ -303,7 +300,7 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
         console.log('Task status updated successfully:', result.data);
       } catch (err) {
         console.error('Error updating task status:', err);
-        // 如果更新失败，恢复原始状态
+        // if update failed, restore the original state
         setTasks(tasks);
         showNotification('Failed to update task status. Please try again.', 'error');
       } finally {
@@ -329,7 +326,7 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
     setEditedTask(null);
   };
 
-  // 检查当前用户是否是任务负责人
+  // check if the current user is the task assignee
   const isTaskAssignee = () => {
     if (!selectedTask || !currentUser) return false;
     
@@ -337,25 +334,25 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
            selectedTask.assignees.some(assignee => assignee.uid === currentUser.uid);
   };
   
-  // 检查当前用户是否有任务管理权限（管理员、经理或任务负责人）
+  // check if the current user has permission to edit task
   const canEditTask = () => {
     if (!selectedTask || !currentUser) return false;
     
-    // 如果是任务负责人，可以编辑
+    
     if (isTaskAssignee()) return true;
     
-    // 如果是管理员或经理，也可以编辑
+    
     return userRole === 'admin' || userRole === 'manager';
   };
   
-  // 检查当前用户是否可以更改任务状态和进度（只有任务负责人可以）
+  // check if the current user can update task status and progress
   const canUpdateStatusAndProgress = () => {
     return isTaskAssignee();
   };
 
-  // 允许开始编辑任务
+  // handle edit task
   const handleEditTask = () => {
-    // 检查权限 - 任何任务编辑都至少需要是任务负责人
+    // check permission
     if (!isTaskAssignee() && userRole !== 'admin' && userRole !== 'manager') {
       showNotification('You do not have permission to edit this task. Only task assignees, team managers or admins can edit tasks.', 'error');
       return;
@@ -416,7 +413,7 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
     try {
       setIsSaving(true);
       
-      // 检查权限 - 确定哪些字段发生了变化
+      // check permission
       const originalTask = tasks.find(t => t.id === editedTask.id);
       if (!originalTask) {
         showNotification('Task not found', 'error');
@@ -432,33 +429,33 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
         originalTask.priority !== editedTask.priority ||
         originalTask.duration !== editedTask.duration;
       
-      // 检查权限：如果有"其他字段"的更改，需要管理员/经理权限
+      // check permission
       if (otherFieldsChanged && userRole !== 'admin' && userRole !== 'manager' && !isTaskAssignee()) {
         showNotification('Only team managers or admins can modify task details other than status and progress.', 'error');
         setIsSaving(false);
         return;
       }
       
-      // 如果只有状态和进度变化，只需要是任务负责人
+      // check permission
       if ((statusChanged || progressChanged) && !isTaskAssignee()) {
         showNotification('Only task assignees can update status and progress.', 'error');
         setIsSaving(false);
         return;
       }
       
-      // 如果用户只是任务负责人但不是管理员/经理，确保他们只修改了状态和进度
+      // check permission
       if (isTaskAssignee() && userRole !== 'admin' && userRole !== 'manager' && otherFieldsChanged) {
-        // 恢复除状态和进度外的所有字段为原始值，但允许状态和进度的变化保留
+        
         const taskWithOnlyStatusProgressChanges = {
           ...originalTask,
           status: editedTask.status,
           progress: editedTask.progress
         };
         
-        // 更新编辑中的任务
+        // update edited task
         setEditedTask(taskWithOnlyStatusProgressChanges);
         
-        // 使用修正后的任务数据进行保存
+        // call cloud function to update task
         const updateTaskFunction = httpsCallable(functions, 'updateTask');
         
         // Remove start_date before sending
@@ -472,7 +469,7 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
         
         console.log('Task updated with restricted changes:', result.data);
         
-        // 更新本地状态
+        // update local state
         setTasks(prevTasks => 
           prevTasks.map(task => 
             task.id === taskWithOnlyStatusProgressChanges.id 
@@ -484,13 +481,13 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
         setIsEditing(false);
         setIsSaving(false);
         
-        // 显示提示，让用户知道只有部分更改被保存
+        // Remind user that only status and progress can be updated
         showNotification('As a task assignee, you can only update status and progress. Other changes have been reverted.', 'info');
         
         return;
       }
       
-      // 如果有权限进行所有更改，则正常保存
+      // check permission
       const updateTaskFunction = httpsCallable(functions, 'updateTask');
       
       // Remove start_date before sending
@@ -504,7 +501,7 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
       
       console.log('Task fully updated:', result.data);
       
-      // 更新本地状态
+      // update local state
       setTasks(prevTasks => 
         prevTasks.map(task => 
           task.id === editedTask.id 
@@ -513,10 +510,10 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
         )
       );
       
-      // 更新选中的任务
+      // update selected task
       setSelectedTask({...editedTask});
       
-      // 重置编辑状态
+      // reset edit status
       setIsEditing(false);
     } catch (err) {
       console.error('Error updating task:', err);
@@ -533,7 +530,7 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
     return 'bg-blue-500'; // Default
   };
 
-  // 修复状态过滤器和过滤逻辑
+  // fix status filter and logic
   const statusFilters = [
     { label: 'All Tasks', value: 'all' },
     { label: 'Pending', value: 'notStarted' },
@@ -542,14 +539,14 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
     { label: 'Overdue', value: 'overdue' },
   ];
 
-  // 更新过滤任务的函数
+  // update filtered tasks
   const getFilteredTasks = () => {
     return tasks.filter((task) => {
-      // 首先应用状态过滤器
+      // apply status filter
       let matchesStatus = true;
       if (selectedStatus !== 'all') {
         if (selectedStatus === 'overdue') {
-          // 检查任务是否逾期
+          // check if is overdue
           const dueDate = task.start_date && typeof task.start_date.toDate === 'function' 
             ? task.start_date.toDate() : new Date(task.start_date);
           const today = new Date();
@@ -559,19 +556,19 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
         }
       }
       
-      // 然后应用搜索文本过滤器
+      // apply search text filter
       const matchesSearch = task.text.toLowerCase().includes(searchText.toLowerCase()) || 
                            (task.description && task.description.toLowerCase().includes(searchText.toLowerCase()));
       
-      // 应用优先级过滤器
+      // apply priority filter
       const matchesPriority = filterOptions.priority === 'all' || task.priority === filterOptions.priority;
       
-      // 应用负责人过滤器
+      // apply assignee filter
       const matchesAssignee = filterOptions.assignee === 'all' || 
                              (task.assignees && task.assignees.some(assignee => 
                                assignee.uid === filterOptions.assignee || assignee.email === filterOptions.assignee));
       
-      // 应用截止日期过滤器
+      // apply due date filter
       let matchesDueDate = true;
       if (filterOptions.dueDate === 'overdue') {
         const dueDate = task.start_date && typeof task.start_date.toDate === 'function' 
@@ -592,7 +589,7 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
         matchesDueDate = dueDate >= today && dueDate <= thisWeek;
       }
       
-      // 应用进度过滤器
+      // apply progress filter
       let matchesProgress = true;
       if (filterOptions.progress === 'notStarted') {
         matchesProgress = task.progress === 0;
@@ -629,11 +626,11 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
     });
   };
 
-  // 使用过滤和排序函数
+  // use filter and sort
   const filteredTasks = getFilteredTasks();
   const sortedAndFilteredTasks = getSortedTasks(filteredTasks);
 
-  // 重置过滤器
+  // reset filters
   const resetFilters = () => {
     setFilterOptions({
       priority: 'all',
@@ -643,7 +640,7 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
     });
   };
 
-  // 处理过滤器变化
+  // handle filter change
   const handleFilterChange = (filterName, value) => {
     setFilterOptions(prev => ({
       ...prev,
@@ -651,13 +648,13 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
     }));
   };
 
-  // 处理排序变化
+  // handle sort change
   const handleSortChange = (option) => {
     if (sortOption === option) {
-      // 如果点击的是当前排序选项，则切换排序方向
+      // switch sort direction
       setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
     } else {
-      // 否则，更改排序选项并设置为升序
+      
       setSortOption(option);
       setSortDirection('asc');
     }
@@ -693,23 +690,23 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
   // Check if user can edit tasks
   const canEditTasks = userRole === 'admin' || userRole === 'manager' || isTaskAssignee();
 
-  // 修改删除任务的处理函数
+  // dandle delete task
   const handleDeleteTask = async () => {
     if (!selectedTask) return;
     
-    // 显示自定义确认弹窗，而不是使用 window.confirm
+    
     setTaskToDelete(selectedTask);
     setShowDeleteConfirm(true);
   };
 
-  // 添加确认删除的处理函数
+  // confirm delete task
   const confirmDeleteTask = async () => {
     if (!taskToDelete) return;
     
     try {
       setIsSaving(true);
       
-      // 使用云函数删除任务
+      // call cloud function to delete task
       const deleteTaskFunction = httpsCallable(functions, 'deleteTask');
       const result = await deleteTaskFunction({
         teamId: teamId,
@@ -718,10 +715,10 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
       
       console.log('Task deleted successfully:', result.data);
       
-      // 更新本地状态
+      // update local state
       setTasks(prevTasks => prevTasks.filter(task => task.id !== taskToDelete.id));
       
-      // 关闭模态框和确认弹窗
+      
       closeTaskDetails();
       setShowDeleteConfirm(false);
       setTaskToDelete(null);
@@ -733,29 +730,29 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
     }
   };
 
-  // 取消删除的处理函数
+  // cancel delete task
   const cancelDeleteTask = () => {
     setShowDeleteConfirm(false);
     setTaskToDelete(null);
   };
 
-  // 处理负责人选择变化
+  // handle assignee change
   const handleAssigneeChange = (member) => {
     setSelectedAssignees(prev => {
-      // 检查成员是否已经被选中
+      // check if the member is already selected
       const isAlreadySelected = prev.some(assignee => assignee.uid === member.uid);
       
       if (isAlreadySelected) {
-        // 如果已选中，则移除
+        // if selected, remove
         return prev.filter(assignee => assignee.uid !== member.uid);
       } else {
-        // 如果未选中，则添加
+        // if not selected, add
         return [...prev, member];
       }
     });
   };
 
-  // 保存选中的负责人
+  // save assignees
   const saveAssignees = () => {
     setEditedTask(prev => ({
       ...prev,
@@ -764,7 +761,7 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
     setShowAssigneeSelector(false);
   };
 
-  // 添加评论的处理函数
+  // handle add comment
   const handleAddComment = async () => {
     if (!newComment.trim() || !currentUser || !selectedTask) return;
     
@@ -779,7 +776,7 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
         const taskIndex = teamData.tasks.findIndex(t => t.id === selectedTask.id);
         
         if (taskIndex !== -1) {
-          // 创建新评论对象
+          
           const newCommentObj = {
             id: Date.now().toString(),
             text: newComment.trim(),
@@ -792,11 +789,11 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
             replyTo: replyTo
           };
           
-          // 更新本地状态
+          // update comments
           const updatedComments = [...comments, newCommentObj];
           setComments(updatedComments);
           
-          // 更新 Firestore
+          // update Firestore
           const updatedTasks = [...teamData.tasks];
           if (!updatedTasks[taskIndex].comments) {
             updatedTasks[taskIndex].comments = [];
@@ -807,13 +804,13 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
             tasks: updatedTasks
           });
           
-          // 发送通知
+          // send notification
           try {
             const sendNotificationFunction = httpsCallable(functions, 'sendNotification');
             
-            // 不同的通知逻辑
+            
             if (replyTo) {
-              // 回复评论的情况: 向被回复用户发送通知
+              // reply comment
               if (replyTo.createdBy && replyTo.createdBy.uid && replyTo.createdBy.uid !== currentUser.uid) {
                 await sendNotificationFunction({
                   userId: replyTo.createdBy.uid,
@@ -825,13 +822,13 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
                   taskId: selectedTask.id,
                   taskName: selectedTask.text
                 });
-                showNotification(`通知已发送给评论作者：${replyTo.createdBy.displayName || replyTo.createdBy.email}`, 'success');
+                showNotification(`send notification to assignee：${replyTo.createdBy.displayName || replyTo.createdBy.email}`, 'success');
               }
             } else {
-              // 新评论的情况: 通知所有任务负责人
+              // new comment
               if (selectedTask.assignees && selectedTask.assignees.length > 0) {
                 const notificationPromises = selectedTask.assignees
-                  .filter(assignee => assignee.uid !== currentUser.uid) // 不给自己发送通知
+                  .filter(assignee => assignee.uid !== currentUser.uid) //do not send notification to yourself
                   .map(assignee => 
                     sendNotificationFunction({
                       userId: assignee.uid,
@@ -848,16 +845,16 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
                 await Promise.all(notificationPromises);
                 
                 if (selectedTask.assignees.some(assignee => assignee.uid !== currentUser.uid)) {
-                  showNotification('通知已发送给所有任务负责人', 'success');
+                  showNotification('Send notification to all assignees', 'success');
                 }
               }
             }
           } catch (notificationError) {
             console.error('Failed to send notifications:', notificationError);
-            // 不要阻止评论的添加，仅记录通知错误
+            
           }
           
-          // 重置表单
+          // reset form
           setNewComment('');
           setReplyTo(null);
         }
@@ -870,7 +867,7 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
     }
   };
 
-  // 格式化日期时间
+  // format date time
   const formatDateTime = (timestamp) => {
     if (!timestamp) return '';
     
@@ -889,24 +886,24 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
     }
   };
 
-  // 设置回复目标
+  // set reply target
   const handleReply = (comment) => {
     setReplyTo(comment);
-    // 聚焦评论输入框
+    
     document.getElementById('comment-input').focus();
   };
 
-  // 取消回复
+  // cancel reply
   const cancelReply = () => {
     setReplyTo(null);
   };
 
-  // 处理文件上传
+  // handle file upload
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
     
-    // 检查文件大小 (限制为 20MB)
+    // check file size(limit 20MB)
     if (file.size > 20 * 1024 * 1024) {
       setUploadError('File size exceeds 20MB limit');
       return;
@@ -917,16 +914,16 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
       setUploadProgress(0);
       setUploadError(null);
       
-      // 创建唯一的文件路径
+      // create unique file path
       const fileId = Date.now().toString();
       const fileExtension = file.name.split('.').pop();
       const filePath = `teams/${teamId}/tasks/${selectedTask.id}/${fileId}.${fileExtension}`;
       const fileRef = storageRef(storage, filePath);
       
-      // 上传文件
+      // upload file
       const uploadTask = uploadBytesResumable(fileRef, file);
       
-      // 监听上传进度
+      // set upload progress
       uploadTask.on('state_changed', 
         (snapshot) => {
           const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
@@ -935,7 +932,7 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
         (error) => {
           console.error('Upload error:', error);
           
-          // 提供更具体的错误消息
+          
           if (error.code === 'storage/unauthorized') {
             setUploadError('Permission denied. You may not have access to upload files to this location.');
           } else {
@@ -945,10 +942,10 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
           setIsUploading(false);
         },
         async () => {
-          // 上传完成，获取下载 URL
+          // get download URL
           const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
           
-          // 创建文件对象
+          // create file object
           const fileObject = {
             id: fileId,
             name: file.name,
@@ -964,7 +961,7 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
             uploadedAt: new Date()
           };
           
-          // 更新 Firestore
+          // update Firestore
           const teamRef = doc(db, 'teams', teamId);
           const teamSnap = await getDoc(teamRef);
           
@@ -983,7 +980,7 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
                 tasks: updatedTasks
               });
               
-              // 更新本地状态
+              // update local state
               setTaskFiles(prev => [...prev, fileObject]);
             }
           }
@@ -999,11 +996,11 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
     }
   };
 
-  // 修改为打开文件删除确认对话框
+  // handle delete file
   const handleDeleteFile = (file) => {
     if (!file || !selectedTask) return;
     
-    // 检查是否有权限删除文件（是任务负责人或文件上传者）
+    // check permission
     const isAssignee = isTaskAssignee();
     const isUploader = file.uploadedBy && currentUser && file.uploadedBy.uid === currentUser.uid;
     
@@ -1012,27 +1009,27 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
       return;
     }
     
-    // 显示确认对话框
+    
     setFileToDelete(file);
     setShowFileDeleteConfirm(true);
   };
   
-  // 确认删除文件的函数
+  // comfirm delete file
   const confirmDeleteFile = async () => {
     if (!fileToDelete) return;
     
     try {
       setIsSaving(true);
       
-      // 删除文件
+      // delete file
       const fileRef = storageRef(storage, fileToDelete.path);
       await deleteObject(fileRef);
       
-      // 更新任务文件列表
+      // update task list
       const updatedFiles = taskFiles.filter(f => f.path !== fileToDelete.path);
       setTaskFiles(updatedFiles);
       
-      // 更新 Firestore 文档中的引用
+      // update firestore
       const teamRef = doc(db, 'teams', teamId);
       const teamSnap = await getDoc(teamRef);
       
@@ -1046,7 +1043,7 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
             updatedTasks[taskIndex].files = [];
           }
           
-          // 从文件列表中移除文件
+          // remove file from file list
           updatedTasks[taskIndex].files = updatedTasks[taskIndex].files.filter(
             f => f.path !== fileToDelete.path
           );
@@ -1055,7 +1052,7 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
             tasks: updatedTasks
           });
           
-          // 显示成功通知
+          
           showNotification(`File "${fileToDelete.name}" has been deleted successfully`, 'success');
         }
       }
@@ -1064,19 +1061,18 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
       showNotification('Failed to delete file. Please try again.', 'error');
     } finally {
       setIsSaving(false);
-      // 关闭确认对话框
       setShowFileDeleteConfirm(false);
       setFileToDelete(null);
     }
   };
   
-  // 取消删除文件
+  // cancle delete file
   const cancelFileDelete = () => {
     setShowFileDeleteConfirm(false);
     setFileToDelete(null);
   };
 
-  // 格式化文件大小
+  // format file size
   const formatFileSize = (bytes) => {
     if (bytes === 0) return '0 Bytes';
     
@@ -1087,7 +1083,7 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  // 获取文件图标
+  // get file icon
   const getFileIcon = (fileType) => {
     if (fileType.includes('image')) {
       return (
@@ -1122,34 +1118,34 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
     }
   };
 
-  // 添加计算截止日期的函数
+  // cal due date
   const calculateDueDate = (startDate, duration) => {
     if (!startDate) return null;
     
-    // 确保我们有一个 JavaScript Date 对象
+    
     const start = startDate instanceof Date 
       ? new Date(startDate) 
       : (startDate.toDate ? startDate.toDate() : new Date(startDate));
     
-    // 复制日期以避免修改原始日期
+    
     const dueDate = new Date(start);
     
-    // 添加持续时间（天数）
+    // add durations
     dueDate.setDate(dueDate.getDate() + (parseInt(duration) || 0));
     
     return dueDate;
   };
 
-  // 格式化日期显示
+  // format date
   const formatDate = (date) => {
     if (!date) return 'N/A';
     
-    // 确保我们有一个 JavaScript Date 对象
+    
     const dateObj = date instanceof Date 
       ? date 
       : (date.toDate ? date.toDate() : new Date(date));
     
-    // 使用 toLocaleDateString 格式化日期
+    
     return dateObj.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
@@ -1157,14 +1153,14 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
     });
   };
 
-  // 添加检查任务是否逾期的函数
+  // check task overdue
   const isTaskOverdue = (task) => {
     if (task.status === 'completed') return false;
     
     const dueDate = calculateDueDate(task.start_date, task.duration);
     const today = new Date();
     
-    // 移除时间部分以仅比较日期
+    // compare only date
     today.setHours(0, 0, 0, 0);
     dueDate.setHours(0, 0, 0, 0);
     
@@ -1257,7 +1253,7 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
         <div className="flex space-x-8">
           {/* Left Sidebar */}
           <div className="w-64 flex-shrink-0">
-        <div className="sticky top-20"> {/* top-20 给顶部固定的 Header 留出空间 */}
+        <div className="sticky top-20"> 
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 max-h-[calc(100vh-5rem)] overflow-y-auto">
               <div className="p-4">
               <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">Status</h2>
@@ -1725,21 +1721,21 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
 <div className="mt-8 border-t border-gray-200 dark:border-gray-700 pt-6">
   <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Comments</h3>
   
-  {/* 评论列表 */}
+  {/* comment list */}
   <div className="space-y-4 mb-6 max-h-80 overflow-y-auto">
     {comments.length === 0 ? (
       <p className="text-gray-500 dark:text-gray-400 text-center py-4">No comments yet. Be the first to comment!</p>
     ) : (
       comments.map(comment => {
-        // 找出对这条评论的所有回复
+        
         const replies = comments.filter(c => c.replyTo && c.replyTo.id === comment.id);
         const isRootComment = !comment.replyTo;
         
-        if (!isRootComment) return null; // 只渲染根评论，回复会在下面渲染
+        if (!isRootComment) return null; 
         
         return (
           <div key={comment.id} className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-            {/* 评论头部 */}
+            {/* comment header */}
             <div className="flex items-start">
               <div className="w-8 h-8 rounded-full bg-emerald-200 dark:bg-emerald-800 flex items-center justify-center mr-3 flex-shrink-0">
                 <span className="text-gray-800 dark:text-gray-200">{comment.createdBy.displayName.charAt(0)}</span>
@@ -1761,7 +1757,7 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
               </div>
             </div>
             
-            {/* 回复列表 */}
+            {/* reply list */}
             {replies.length > 0 && (
               <div className="mt-3 pl-11 space-y-3">
                 {replies.map(reply => (
@@ -1777,7 +1773,7 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
                             <p className="text-xs text-gray-500 dark:text-gray-300">{formatDateTime(reply.createdAt)}</p>
                           </div>
                           <button
-                            onClick={() => handleReply(comment)} // 回复原评论，而不是回复的回复
+                            onClick={() => handleReply(comment)} 
                             className="text-xs text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300"
                           >
                             Reply
@@ -1802,7 +1798,7 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
               </div>
 
                 
-{/* 评论输入框 */}
+{/* comment input */}
 <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
   {replyTo && (
     <div className="mb-2 flex items-center justify-between bg-blue-50 dark:bg-blue-900/30 p-2 rounded">
@@ -1936,8 +1932,11 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
                 // Create a temporary link element once
                 const downloadLink = document.createElement('a');
                 try {
-                  // Fetch the file as a blob
-                  const response = await fetch(file.url);
+                  // Fetch the file as a blob, setting mode to 'no-cors'
+                  const response = await fetch(file.url); // Added { mode: 'no-cors' }
+                  
+                  // --- PROBLEM AREA --- 
+                  // The following lines will likely fail or produce an empty/unusable blob
                   if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                   }
@@ -2134,7 +2133,7 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
       </div>
       
       <div className="space-y-4">
-        {/* 优先级过滤器 */}
+        {/* prioritty filter */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">Priority</label>
           <select
@@ -2149,7 +2148,7 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
           </select>
         </div>
         
-        {/* 负责人过滤器 */}
+        {/* assignee filter */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">Assignee</label>
           <select
@@ -2158,12 +2157,12 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
             className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:ring-emerald-600"
           >
             <option value="all">All Assignees</option>
-            {/* 这里可以动态生成团队成员列表 */}
+            {/* member list */}
             {currentUser && <option value={currentUser.uid}>Assigned to me</option>}
           </select>
         </div>
         
-        {/* 截止日期过滤器 */}
+        {/* due date filter*/}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">Due Date</label>
           <select
@@ -2178,7 +2177,7 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
           </select>
         </div>
         
-        {/* 进度过滤器 */}
+        {/* progress filter */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">Progress</label>
           <select

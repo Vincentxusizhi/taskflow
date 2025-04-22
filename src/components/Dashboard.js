@@ -95,14 +95,14 @@ const Dashboard = () => {
           overdueTasks: overdue
         });
 
-        // 获取最新的通知
+        // get latest notifications
         const notifications = [];
         try {
           const notificationsRef = collection(db, 'notifications');
           const q = query(
             notificationsRef,
             where('userId', '==', userId),
-            orderBy('createdAt', 'desc'), // 按创建时间降序排序
+            orderBy('createdAt', 'desc'), 
             limit(5)
           );
           
@@ -116,7 +116,6 @@ const Dashboard = () => {
           });
         } catch (notificationError) {
           console.error('Error fetching notifications:', notificationError);
-          // 尝试不使用orderBy来获取通知
           try {
             const notificationsRef = collection(db, 'notifications');
             const basicQuery = query(
@@ -134,7 +133,6 @@ const Dashboard = () => {
               });
             });
             
-            // 客户端手动排序
             notifications.sort((a, b) => {
               if (!a.createdAt || !b.createdAt) return 0;
               return b.createdAt - a.createdAt;

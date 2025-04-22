@@ -1,7 +1,7 @@
 const functions = require('firebase-functions/v2');
 const admin = require('firebase-admin');
 
-// 检查用户是否是团队成员
+// check if user is team member
 const isUserTeamMember = async (teamId, userId) => {
   try {
     const teamDoc = await admin.firestore().collection('teams').doc(teamId).get();
@@ -18,9 +18,9 @@ const isUserTeamMember = async (teamId, userId) => {
   }
 };
 
-// 创建任务
+// create task
 exports.createTask = functions.https.onCall(async (request) => {
-  // 验证用户是否已登录
+  // verify if user is logged in
   if (!request.auth) {
     throw new functions.https.HttpsError(
       'unauthenticated',
@@ -28,7 +28,7 @@ exports.createTask = functions.https.onCall(async (request) => {
     );
   }
 
-  // 验证请求数据
+  // verify request data
   if (!request.data.teamId || !request.data.taskData) {
     throw new functions.https.HttpsError(
       'invalid-argument',
@@ -40,7 +40,7 @@ exports.createTask = functions.https.onCall(async (request) => {
   const userId = request.auth.uid;
 
   try {
-    // 检查用户是否是团队成员
+    // check if user is team member
     const isMember = await isUserTeamMember(teamId, userId);
     if (!isMember) {
       throw new functions.https.HttpsError(
@@ -49,7 +49,7 @@ exports.createTask = functions.https.onCall(async (request) => {
       );
     }
 
-    // 获取团队数据
+    // get team data
     const teamRef = admin.firestore().collection('teams').doc(teamId);
     const teamSnap = await teamRef.get();
     
@@ -60,16 +60,16 @@ exports.createTask = functions.https.onCall(async (request) => {
       );
     }
 
-    // 处理日期
+    // handle date
     let formattedStartDate = taskData.start_date;
     if (formattedStartDate && typeof formattedStartDate === 'string') {
       formattedStartDate = admin.firestore.Timestamp.fromDate(new Date(formattedStartDate));
     }
 
-    // 当前时间的 Firestore Timestamp (不使用 serverTimestamp，因为它不能在数组中使用)
+    // current time of Firestore Timestamp (do not use serverTimestamp, it cannot be used in array)
     const now = admin.firestore.Timestamp.fromDate(new Date());
 
-    // 创建任务数据，使用 Date.now() 生成唯一的ID
+    // create task data, use Date.now() to generate unique ID
     const task = {
       id: Date.now(), 
       text: taskData.text,
@@ -85,18 +85,18 @@ exports.createTask = functions.https.onCall(async (request) => {
       // createdAt: admin.firestore.FieldValue.serverTimestamp()
     };
 
-    // 更新 Firestore
+    // update Firestore
     await teamRef.update({
       tasks: admin.firestore.FieldValue.arrayUnion(task)
     });
 
-    // 向任务负责人发送通知
+    // send notification to task assignees
     if (task.assignees && task.assignees.length > 0) {
       const batch = admin.firestore().batch();
       const teamData = teamSnap.data();
       
       for (const assignee of task.assignees) {
-        if (assignee.uid !== userId) { // 不给自己发通知
+        if (assignee.uid !== userId) { // do not send notification to yourself
           const notificationRef = admin.firestore().collection('notifications').doc();
           batch.set(notificationRef, {
             userId: assignee.uid,
@@ -108,7 +108,7 @@ exports.createTask = functions.https.onCall(async (request) => {
             taskId: task.id,
             taskName: task.text,
             read: false,
-            // createdAt: admin.firestore.FieldValue.serverTimestamp() // 这里可以使用 serverTimestamp 因为不是在数组中
+            // createdAt: admin.firestore.FieldValue.serverTimestamp() // here can use serverTimestamp because it is not in array
           });
         }
       }
@@ -130,9 +130,9 @@ exports.createTask = functions.https.onCall(async (request) => {
   }
 });
 
-// 更新任务
+// update task
 exports.updateTask = functions.https.onCall(async (request) => {
-  // 验证用户是否已登录
+  // verify if user is logged in
   if (!request.auth) {
     throw new functions.https.HttpsError(
       'unauthenticated',
@@ -140,7 +140,7 @@ exports.updateTask = functions.https.onCall(async (request) => {
     );
   }
 
-  // 验证请求数据
+  // verify request data
   if (!request.data.teamId || !request.data.taskId || !request.data.taskData) {
     throw new functions.https.HttpsError(
       'invalid-argument',
@@ -152,7 +152,7 @@ exports.updateTask = functions.https.onCall(async (request) => {
   const userId = request.auth.uid;
 
   try {
-    // 检查用户是否是团队成员
+    // check if user is team member
     const isMember = await isUserTeamMember(teamId, userId);
     if (!isMember) {
       throw new functions.https.HttpsError(
@@ -161,7 +161,7 @@ exports.updateTask = functions.https.onCall(async (request) => {
       );
     }
 
-    // 获取团队数据
+    // get team data
     const teamRef = admin.firestore().collection('teams').doc(teamId);
     const teamSnap = await teamRef.get();
     
@@ -175,7 +175,7 @@ exports.updateTask = functions.https.onCall(async (request) => {
     const teamData = teamSnap.data();
     const tasks = teamData.tasks || [];
     
-    // 查找任务
+    // find task
     const taskIndex = tasks.findIndex(t => t.id.toString() === taskId.toString());
     
     if (taskIndex === -1) {
@@ -185,17 +185,17 @@ exports.updateTask = functions.https.onCall(async (request) => {
       );
     }
 
-    // 当前时间的 Firestore Timestamp
+    // current time of Firestore Timestamp
     const now = admin.firestore.Timestamp.fromDate(new Date());
 
-    // 保存原始的start_date，确保它是Timestamp格式
+    // save original start_date, ensure it is Timestamp format
     let originalStartDate = tasks[taskIndex].start_date;
     if (originalStartDate && !(originalStartDate instanceof admin.firestore.Timestamp)) {
-        // 尝试从可能的序列化格式转换回Timestamp
+        // try to convert back to Timestamp from possible serialized format
         if (originalStartDate.seconds !== undefined) {
             originalStartDate = new admin.firestore.Timestamp(originalStartDate.seconds, originalStartDate.nanoseconds || 0);
         } else {
-            // 如果无法转换，使用当前时间或记录错误
+            // if cannot convert, use current date or record error
             console.warn("Original start_date is not a Timestamp, using current date");
             originalStartDate = admin.firestore.Timestamp.fromDate(new Date());
         }
