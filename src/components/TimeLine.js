@@ -1721,7 +1721,7 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
 
   <div className="grid grid-cols-2 gap-4 mb-4">
                   <div>
-      <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Start Date 111</h3>
+      <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Start Date</h3>
       <p className="text-gray-800 dark:text-gray-200">
         {formatDate(selectedTask.start_date)}
       </p>

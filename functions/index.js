@@ -83,7 +83,7 @@ exports.sendNotification = functions.https.onCall(async (request) => {
       taskId: request.data.taskId || null,
       taskName: request.data.taskName || null,
       read: false,
-      // createdAt: admin.firestore.FieldValue.serverTimestamp()
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
     });
 
     return { success: true };
