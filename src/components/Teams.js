@@ -268,7 +268,7 @@ const Teams = () => {
       setNewMemberError("");
 
       try {
-        // 使用云函数搜索用户
+        // user cloud function to search users
         const searchUsersFunction = httpsCallable(functions, 'searchUsers');
         const result = await searchUsersFunction({ searchText: newMemberEmail.trim() });
         
@@ -280,13 +280,13 @@ const Teams = () => {
           return;
         }
         
-        // 使用匹配到的第一个用户
+        // use the first user found
         userToAdd = {
           ...users[0],
           role: newMemberRole
         };
         
-        // 检查是否尝试添加自己
+        // check if trying to add yourself
         if (userToAdd.uid === currentUserId) {
           setNewMemberError("You cannot add yourself again");
           setAddingNewMember(false);
@@ -301,25 +301,25 @@ const Teams = () => {
     }
 
     try {
-      // 使用云函数添加团队成员
+      // use cloud function to add team member
       const addTeamMemberFunction = httpsCallable(functions, 'addTeamMember');
       const result = await addTeamMemberFunction({ 
         teamId: selectedTeam.id, 
         memberData: userToAdd 
       });
       
-      // 使用云函数返回的数据更新本地状态
+      // use cloud function to update local state
       const updatedMembersData = result.data.updatedMembers;
       const updatedMembers = updatedMembersData.map(member => member.uid);
       
-      // 更新选中的团队状态
+      // update selected team state
       setSelectedTeam({
         ...selectedTeam,
         members: updatedMembers,
         membersData: updatedMembersData,
       });
 
-      // 更新团队列表
+      // update team list
       setTeams(
         teams.map((team) =>
           team.id === selectedTeam.id
@@ -332,7 +332,7 @@ const Teams = () => {
         )
       );
 
-      // 重置表单
+      // reset form
       setNewMemberEmail("");
       setNewMemberRole("team_member");
       setShowNewMemberSearchResults(false);
@@ -340,7 +340,7 @@ const Teams = () => {
       console.error("Error adding new member:", error);
       let errorMessage = "Failed to add member to team";
       
-      // 根据云函数的响应提供更具体的错误信息
+      // provide more specific error information based on cloud function response
       if (error.details) {
         if (error.details.code === 'already-exists') {
           errorMessage = "This user is already a member of the team";
@@ -368,7 +368,7 @@ const Teams = () => {
 
     setMemberUpdating(true);
     try {
-      // 使用云函数更新成员角色
+      // use cloud function to update member role
       const updateTeamMemberRoleFunction = httpsCallable(functions, 'updateTeamMemberRole');
       const result = await updateTeamMemberRoleFunction({ 
         teamId: selectedTeam.id, 
@@ -376,16 +376,16 @@ const Teams = () => {
         newRole: newRole
       });
       
-      // 使用返回的数据更新本地状态
+      // use returned data to update local state
       const updatedMembersData = result.data.updatedMembers;
       
-      // 更新团队状态
+      // update team state
       setSelectedTeam({
         ...selectedTeam,
         membersData: updatedMembersData,
       });
 
-      // 更新团队列表
+      // update team list
       setTeams(
         teams.map((team) =>
           team.id === selectedTeam.id
@@ -423,14 +423,14 @@ const Teams = () => {
     if (!selectedTeam || !removingMemberId) return;
 
     try {
-      // 使用云函数移除团队成员
+      // use cloud function to remove team member
       const removeTeamMemberFunction = httpsCallable(functions, 'removeTeamMember');
       const result = await removeTeamMemberFunction({ 
         teamId: selectedTeam.id, 
         memberId: removingMemberId 
       });
 
-      // 更新本地状态
+      // update local state
       const updatedMembersData = result.data.updatedMembers;
       const updatedMembers = updatedMembersData.map(member => member.uid);
       
@@ -440,7 +440,7 @@ const Teams = () => {
         membersData: updatedMembersData,
       });
 
-      // 更新团队列表
+      // update team list
       setTeams(
         teams.map((team) =>
           team.id === selectedTeam.id
@@ -453,7 +453,7 @@ const Teams = () => {
         )
       );
 
-      // 关闭确认模态框
+      // close confirm modal
       setShowRemoveConfirmation(false);
       setRemovingMemberId(null);
     } catch (error) {
@@ -466,7 +466,7 @@ const Teams = () => {
     setShowTeamDetailModal(true);
   };
 
-  // 导航到团队任务页面
+  // navigate to team tasks page
   const goToTeamTasks = (teamId) => {
     navigate(`/team/${teamId}/tasks`);
   };
@@ -497,11 +497,11 @@ const Teams = () => {
 
     setTeamDisbanding(true);
     try {
-      // 使用云函数解散团队
+      // use cloud function to disband team
       const disbandTeamFunction = httpsCallable(functions, 'disbandTeam');
       await disbandTeamFunction({ teamId: selectedTeam.id });
 
-      // 更新UI
+      // update UI
       setTeams(teams.filter((team) => team.id !== selectedTeam.id));
       setShowTeamDetailModal(false);
       setConfirmDisbandModal(false);
@@ -590,7 +590,7 @@ const Teams = () => {
     }
   };
 
-  // 初始化或更新权限
+  // initialize or update permissions
   useEffect(() => {
     if (selectedTeam) {
       const checkPermissions = async () => {
@@ -608,23 +608,23 @@ const Teams = () => {
     }
   }, [selectedTeam]);
   
-  // 检查用户是否是团队管理员
+  // check if user is team admin
   const checkIsAdmin = (team) => {
     if (teamPermissions.teamId === team?.id) {
       return teamPermissions.isAdmin;
     }
-    // 默认使用本地检查作为回退
+    // use local check as fallback
     return team?.membersData?.some(
       (member) => member.uid === auth.currentUser?.uid && member.role === "admin"
     );
   };
   
-  // 检查用户是否是团队管理者或管理员
+  // check if user is team manager or admin
   const checkIsManager = (team) => {
     if (teamPermissions.teamId === team?.id) {
       return teamPermissions.isManager;
     }
-    // 默认使用本地检查作为回退
+    // use local check as fallback
     return team?.membersData?.some(
       (member) => 
         member.uid === auth.currentUser?.uid &&
@@ -949,9 +949,12 @@ const Teams = () => {
               </div>
               <button
                 onClick={closeTeamDetails}
-                className="hover:bg-red-700 dark:hover:bg-red-800 bg-red-600 dark:bg-red-700 fixed z-50 p-2 rounded-full right-"
+                className="p-1 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
+                aria-label="Close"
               >
-                <i className="fas fa-times text-white"></i>
+                <svg className="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
             </div>
 

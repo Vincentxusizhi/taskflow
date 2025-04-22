@@ -33,14 +33,14 @@ const UserProfile = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
-  // 添加弹窗状态
+  // add notification state
   const [notification, setNotification] = useState({
     show: false,
     message: '',
     type: 'success' // 'success', 'error', 'info'
   });
   
-  // 显示通知弹窗的函数
+  // function to show notification
   const showNotification = (message, type = 'success') => {
     setNotification({
       show: true,
@@ -48,13 +48,13 @@ const UserProfile = () => {
       type
     });
     
-    // 3秒后自动关闭
+    // close notification after 3 seconds
     setTimeout(() => {
       setNotification(prev => ({ ...prev, show: false }));
     }, 3000);
   };
   
-  // 编辑模式状态
+  // edit mode state
   const [isEditing, setIsEditing] = useState(false);
   const [editedUser, setEditedUser] = useState({
     displayName: '',
@@ -64,7 +64,7 @@ const UserProfile = () => {
     phoneNumber: ''
   });
   
-  // 密码更改状态
+  // password change state
   const [showPasswordChange, setShowPasswordChange] = useState(false);
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
@@ -74,15 +74,15 @@ const UserProfile = () => {
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState('');
   
-  // 添加头像相关状态
+  // add avatar related state
   const [avatarFile, setAvatarFile] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   
-  // 添加文件输入引用
+  // add file input reference
   const fileInputRef = useRef(null);
   
-  // 获取用户数据
+  // get user data
   useEffect(() => {
     const fetchUserData = async () => {
       try {
@@ -103,7 +103,7 @@ const UserProfile = () => {
         setUserTeams(teams);
         setUserTasks(tasks);
         
-        // 初始化编辑表单
+        // initialize edit form
         setEditedUser({
           displayName: userData.displayName || '',
           email: userData.email || '',
@@ -125,7 +125,7 @@ const UserProfile = () => {
     }
   }, [userId, functions]);
   
-  // 处理表单输入变化
+  // handle form input change
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setEditedUser(prev => ({
@@ -134,7 +134,7 @@ const UserProfile = () => {
     }));
   };
   
-  // 处理密码输入变化
+  // handle password input change
   const handlePasswordChange = (e) => {
     const { name, value } = e.target;
     setPasswordData(prev => ({
@@ -143,7 +143,7 @@ const UserProfile = () => {
     }));
   };
   
-  // 保存个人资料更改
+  // save profile changes
   const handleSaveProfile = async () => {
     try {
       if (!currentUser || currentUser.uid !== userId) {
@@ -152,7 +152,7 @@ const UserProfile = () => {
         return;
       }
       
-      // 更新 Firebase Auth 显示名称
+      // update Firebase Auth display name
       await updateProfile(currentUser, {
         displayName: editedUser.displayName
       });
@@ -167,7 +167,7 @@ const UserProfile = () => {
         }
       });
       
-      // 更新本地状态
+      // update local state
       setUser(prev => ({
         ...prev,
         ...editedUser,
@@ -183,7 +183,7 @@ const UserProfile = () => {
     }
   };
   
-  // 更改密码
+  // change password
   const handleChangePassword = async () => {
     try {
       setPasswordError('');
@@ -195,7 +195,7 @@ const UserProfile = () => {
         return;
       }
       
-      // 验证新密码
+      // validate new password
       if (passwordData.newPassword !== passwordData.confirmPassword) {
         setPasswordError('New passwords do not match');
         showNotification('New passwords do not match', 'error');
@@ -208,7 +208,7 @@ const UserProfile = () => {
         return;
       }
       
-      // 重新认证用户
+      // reauthenticate user
       const credential = EmailAuthProvider.credential(
         currentUser.email,
         passwordData.currentPassword
@@ -216,10 +216,10 @@ const UserProfile = () => {
       
       await reauthenticateWithCredential(currentUser, credential);
       
-      // 更新密码
+      // update password
       await updatePassword(currentUser, passwordData.newPassword);
       
-      // 重置表单
+      // reset form
       setPasswordData({
         currentPassword: '',
         newPassword: '',
@@ -241,7 +241,7 @@ const UserProfile = () => {
     }
   };
   
-  // 格式化日期
+  // format date
   const timestampToDate = (timestampInput) => {
     if (!timestampInput) {
       return null; // Return null for invalid input
@@ -288,7 +288,7 @@ const UserProfile = () => {
     });
   };
   
-  // 计算截止日期
+  // calculate due date
   const calculateDueDate = (startDate, duration) => {
     const start = timestampToDate(startDate); // Use the helper here too
 
@@ -299,18 +299,18 @@ const UserProfile = () => {
     return dueDate;
   };
   
-  // 处理头像选择
+  // handle avatar change
   const handleAvatarChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
     
-    // 验证文件类型
+    // validate file type
     if (!file.type.match('image.*')) {
       showNotification('Please select an image file', 'error');
       return;
     }
     
-    // 验证文件大小 (限制为 2MB)
+    // validate file size (limit to 2MB)
     if (file.size > 2 * 1024 * 1024) {
       showNotification('Image size should be less than 2MB', 'error');
       return;
@@ -318,7 +318,7 @@ const UserProfile = () => {
     
     setAvatarFile(file);
     
-    // 创建预览
+    // create preview
     const reader = new FileReader();
     reader.onload = (e) => {
       setAvatarPreview(e.target.result);
@@ -326,24 +326,24 @@ const UserProfile = () => {
     reader.readAsDataURL(file);
   };
   
-  // 上传头像
+  // upload avatar
   const uploadAvatar = async () => {
     if (!avatarFile || !currentUser) return;
     
     try {
       setUploadingAvatar(true);
       
-      // 创建存储引用
+      // create storage reference
       const storage = getStorage();
       const avatarRef = ref(storage, `avatars/${currentUser.uid}/${Date.now()}_${avatarFile.name}`);
       
-      // 上传文件
+      // upload file
       await uploadBytes(avatarRef, avatarFile);
       
-      // 获取下载 URL
+      // get download URL
       const downloadURL = await getDownloadURL(avatarRef);
       
-      // 更新用户资料
+      // update user profile
       await updateProfile(currentUser, {
         photoURL: downloadURL
       });
@@ -355,28 +355,28 @@ const UserProfile = () => {
         photoURL: downloadURL
       });
       
-      // 更新本地状态
+      // update local state
       setUser(prev => ({
         ...prev,
         photoURL: downloadURL
       }));
       
-      // 重置文件状态
+      // reset file state
       setAvatarFile(null);
       setAvatarPreview(null);
       
-      // 替换alert为自定义通知
+      // replace alert with custom notification
       showNotification('Avatar updated successfully');
     } catch (err) {
       console.error('Error uploading avatar:', err);
-      // 替换alert为自定义通知
+      // replace alert with custom notification
       showNotification(`Failed to update avatar: ${err.message || err}`, 'error');
     } finally {
       setUploadingAvatar(false);
     }
   };
   
-  // 触发文件选择对话框
+  // trigger file input
   const triggerFileInput = () => {
     fileInputRef.current.click();
   };
@@ -434,7 +434,7 @@ const UserProfile = () => {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pt-16">
       <Header />
       
-      {/* 通知弹窗组件 */}
+      {/* notification component */}
       {notification.show && (
         <div className={`fixed top-20 right-4 z-50 p-4 rounded-lg shadow-lg max-w-md transition-all duration-300 transform translate-y-0 
           ${notification.type === 'success' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-800 dark:text-emerald-100' : 
@@ -473,10 +473,10 @@ const UserProfile = () => {
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="max-w-4xl mx-auto">
-          {/* 个人资料卡 */}
+          {/* profile card */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden mb-6 dark:shadow-gray-700/50">
             <div className="p-6 relative">
-              {/* 添加编辑按钮 */}
+              {/* add edit button */}
               {currentUser && currentUser.uid === userId && !isEditing && (
                 <button
                   onClick={() => setIsEditing(true)}
@@ -490,15 +490,29 @@ const UserProfile = () => {
               )}
     
               <div className="flex flex-col md:flex-row items-start md:items-center">
-                {/* 头像部分 */}
+                {/* avatar section */}
                 <div className="mb-4 md:mb-0 md:mr-6">
                   <div className="relative group">
-                    <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-emerald-100 dark:border-emerald-900/30">
-                      <img 
-                        src={avatarPreview || user.photoURL || 'https://via.placeholder.com/100'} 
-                        alt={user.displayName || 'User'} 
-                        className="w-full h-full object-cover"
-                      />
+                    <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-emerald-100 dark:border-emerald-900/30 flex items-center justify-center bg-emerald-200 text-emerald-700 dark:bg-emerald-700 dark:text-emerald-100 text-4xl font-medium">
+                      {/* Conditional Rendering: Image or Initials */}
+                      {(avatarPreview || user?.photoURL) ? (
+                        <img 
+                          // Use preview if available, otherwise use user's photoURL
+                          src={avatarPreview || user.photoURL} 
+                          alt={user.displayName || 'User'} 
+                          className="w-full h-full object-cover"
+                          onError={(e) => { // Simple onError: just log and maybe hide
+                            console.error("Failed to load image:", e.target.src);
+                            e.target.style.display = 'none'; // Hide broken image
+                            // Optionally, find the parent and reveal an initials span if needed
+                          }}
+                        />
+                      ) : (
+                        // Display Initials if no photoURL and no preview
+                        <span>
+                          {user?.displayName?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'U'}
+                        </span>
+                      )}
                     </div>
                     
                     {isEditing && (
@@ -541,7 +555,7 @@ const UserProfile = () => {
                   )}
                 </div>
                 
-                {/* 用户信息部分 */}
+                {/* user info section */}
                 <div className="flex-1">
                   {isEditing ? (
                     <div className="space-y-4">
@@ -737,7 +751,7 @@ const UserProfile = () => {
             </div>
           </div>
           
-          {/* 用户团队 */}
+          {/* user teams */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden mb-6 dark:shadow-gray-700/50">
             <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
               <h2 className="text-lg font-medium text-gray-900 dark:text-white">Teams</h2>
@@ -770,7 +784,7 @@ const UserProfile = () => {
             </div>
           </div>
           
-          {/* 用户任务 */}
+          {/* user tasks */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden dark:shadow-gray-700/50">
             <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
               <h2 className="text-lg font-medium text-gray-900 dark:text-white">Assigned Tasks</h2>

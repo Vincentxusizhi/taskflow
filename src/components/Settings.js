@@ -292,10 +292,21 @@ const Settings = () => {
       // Get download URL
       const downloadURL = await getDownloadURL(avatarRef);
       
-      // Update user profile
+      // Update user profile in Firebase Auth
       await updateProfile(currentUser, {
         photoURL: downloadURL
       });
+
+      // Update photoURL in Firestore document as well
+      try {
+        const userRef = doc(db, 'users', currentUser.uid);
+        await updateDoc(userRef, { 
+          photoURL: downloadURL 
+        });
+      } catch (firestoreError) {
+        console.error("Error updating Firestore photoURL:", firestoreError);
+        // Optionally notify user, but Auth profile was updated.
+      }
       
       // Update profile state
       setProfile(prev => ({

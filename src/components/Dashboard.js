@@ -138,7 +138,7 @@ const Dashboard = () => {
               return b.createdAt - a.createdAt;
             });
             
-            // 只保留前5条
+            // only keep top 5
             notifications.splice(5);
           } catch (fallbackError) {
             console.error('Fallback notification fetch also failed:', fallbackError);
@@ -201,7 +201,7 @@ const Dashboard = () => {
 
   // Navigate to team details
   const navigateToTeam = (teamId) => {
-    navigate(`/Teams`);
+    navigate(`/team/${teamId}/tasks`);
   };
 
   // Navigate to task details
@@ -426,16 +426,34 @@ const Dashboard = () => {
               </div>
               <div className="p-6">
                 <div className="flex items-center">
-                  <div className="flex-shrink-0 w-20 h-20 rounded-full overflow-hidden border-4 border-emerald-100 dark:border-emerald-900/30">
-                    <img 
-                      src={userData?.photoURL || 'https://via.placeholder.com/150'} 
-                      alt={userData?.displayName} 
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = `https://via.placeholder.com/150?text=${userData?.displayName?.charAt(0) || 'U'}`;
-                      }}
-                    />
+                  <div className="flex-shrink-0 w-20 h-20 rounded-full overflow-hidden border-4 border-emerald-100 dark:border-emerald-900/30 flex items-center justify-center bg-emerald-200 text-emerald-700 dark:bg-emerald-700 dark:text-emerald-100 text-3xl font-medium">
+                    {/* Conditional Rendering: Image or Initials */}
+                    {userData?.photoURL ? (
+                      <img 
+                        src={userData.photoURL} 
+                        alt={userData.displayName} 
+                        className="w-full h-full object-cover"
+                        // Keep onError for actual image load errors, but maybe simplify fallback
+                        onError={(e) => {
+                          e.target.onerror = null; // Prevent loops
+                          e.target.style.display = 'none'; // Hide broken image icon
+                          // Optionally show initials here too if image fails
+                          const initialsContainer = e.target.nextElementSibling; 
+                          if(initialsContainer) initialsContainer.style.display = 'flex'; 
+                        }}
+                      />
+                    ) : (
+                      // Display Initials if no photoURL
+                      <span>
+                        {userData?.displayName?.charAt(0).toUpperCase() || userData?.email?.charAt(0).toUpperCase() || 'U'}
+                      </span>
+                    )}
+                    {/* Sibling element for onError fallback initials (initially hidden) */}
+                    {!userData?.photoURL && (
+                       <span style={{display: 'none'}} className="w-full h-full flex items-center justify-center">
+                         {userData?.displayName?.charAt(0).toUpperCase() || userData?.email?.charAt(0).toUpperCase() || 'U'}
+                       </span>
+                    )}
                   </div>
                   <div className="ml-6">
                     <h3 className="text-xl font-bold text-gray-900 dark:text-white">{userData?.displayName}</h3>

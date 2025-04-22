@@ -53,6 +53,8 @@ const MainPage = () => {
   const [loadingTeams, setLoadingTeams] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isManager, setIsManager] = useState(false);
+  // State for member list modal
+  const [showMemberListModal, setShowMemberListModal] = useState(false);
 
   // fetch team data
   const fetchTeamData = useCallback(async () => {
@@ -98,14 +100,14 @@ const MainPage = () => {
     }
   }, [teamId, navigate]);
   
-  // 添加获取用户所有团队的函数
+  // add function to get all user's teams
   const fetchUserTeams = async (userId) => {
     if (!userId) return;
     
     try {
       setLoadingTeams(true);
       
-      // 查询用户所属的所有团队
+      // query all teams that user belongs to
       const teamsQuery = query(
         collection(db, 'teams'),
         where('members', 'array-contains', userId)
@@ -121,7 +123,7 @@ const MainPage = () => {
         });
       });
       
-      // 按团队名称排序
+      // sort teams by name
       teams.sort((a, b) => {
         const nameA = a.name || '';
         const nameB = b.name || '';
@@ -136,7 +138,7 @@ const MainPage = () => {
     }
   };
   
-  // 处理团队切换
+  // handle team switch
   const handleTeamChange = (newTeamId) => {
     if (newTeamId && newTeamId !== teamId) {
       navigate(`/team/${newTeamId}/tasks`);
@@ -186,7 +188,7 @@ const MainPage = () => {
             });
           }
           
-          // 获取用户所有团队
+          // get all user's teams
           await fetchUserTeams(user.uid);
           
         } catch (error) {
@@ -259,7 +261,7 @@ const MainPage = () => {
     };
   }, [showSidebar]);
 
-  // 处理打开创建任务模态框
+  // handle open create task modal
   const handleOpenCreateTaskModal = () => {
     // Apply user default task settings when opening the modal
     setNewTask({
@@ -276,24 +278,24 @@ const MainPage = () => {
     setShowCreateTaskModal(true);
   };
 
-  // 处理创建任务
+  // handle create task
   const handleCreateTask = async (e) => {
     e.preventDefault();
     
-    // 检查权限 - 只有管理员和经理可以创建任务
+    // check permission - only admins and managers can create tasks
     if (!isAdmin && !isManager) {
       alert('You do not have permission to create tasks. Only team administrators and managers can create tasks.');
       return;
     }
     
-    // 验证表单
+    // validate form
     if (!newTask.text.trim()) {
       alert('Task name is required');
       return;
     }
     
     try {
-      // 格式化开始日期
+      // format start date
       let formattedStartDate = newTask.start_date;
       if (typeof newTask.start_date === 'string') {
         formattedStartDate = new Date(newTask.start_date).toISOString();
@@ -301,7 +303,7 @@ const MainPage = () => {
         formattedStartDate = formattedStartDate.toDate().toISOString();
       }
       
-      // 创建任务数据
+      // create task data
       const taskData = {
         text: newTask.text,
         description: newTask.description,
@@ -310,7 +312,7 @@ const MainPage = () => {
         type: newTask.type,
         priority: newTask.priority,
         progress: newTask.progress,
-        status: 'notStarted', // 使用新的状态值
+        status: 'notStarted', // use new status value
         assignees: selectedAssignees.map(assignee => ({
           uid: assignee.uid,
           displayName: assignee.displayName,
@@ -318,7 +320,7 @@ const MainPage = () => {
         }))
       };
       
-      // 使用云函数创建任务
+      // use cloud function to create task
       const createTaskFunction = httpsCallable(functions, 'createTask');
       const result = await createTaskFunction({
         teamId: teamId,
@@ -327,7 +329,7 @@ const MainPage = () => {
       
       console.log('Task created successfully:', result.data);
       
-      // 重置表单，使用用户默认设置
+      // reset form, use user default settings
       setNewTask({
         text: '',
         description: '',
@@ -341,10 +343,10 @@ const MainPage = () => {
       setSelectedAssignees([]);
       setShowCreateTaskModal(false);
       
-      // 增加刷新键以触发视图刷新
+      // increase refresh key to trigger view refresh
       setRefreshKey(prevKey => prevKey + 1);
       
-      // 刷新团队数据以更新任务列表
+      // refresh team data to update task list
       fetchTeamData();
     } catch (error) {
       console.error('Error creating task:', error);
@@ -352,18 +354,18 @@ const MainPage = () => {
     }
   };
   
-  // 处理添加/删除任务负责人
+  // handle add/remove task assignee
   const toggleAssignee = (member) => {
     if (selectedAssignees.some(a => a.uid === member.uid)) {
-      // 如果已选择，则移除
+      // if already selected, remove
       setSelectedAssignees(selectedAssignees.filter(a => a.uid !== member.uid));
     } else {
-      // 如果未选择，则添加
+      // if not selected, add
       setSelectedAssignees([...selectedAssignees, member]);
     }
   };
   
-  // 切换视图模式
+  // toggle view mode
   const toggleViewMode = (mode) => {
     setViewMode(mode);
   };
@@ -405,7 +407,7 @@ const MainPage = () => {
     }
   };
 
-  // 渲染主页面
+  // render main page
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <Header />
@@ -415,7 +417,7 @@ const MainPage = () => {
           <div className="py-6">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
               <div className="flex-1 min-w-0">
-                {/* 添加团队选择器 */}
+                {/* add team selector */}
                 <div className="flex items-center space-x-3">
                   <select
                     value={teamId || ''}
@@ -446,6 +448,13 @@ const MainPage = () => {
                     <div className="mt-2 flex items-center text-sm text-gray-500 dark:text-gray-400">
                       <i className="fas fa-users mr-1.5 text-gray-400 dark:text-gray-500"></i>
                       {teamMembers.length} {teamMembers.length === 1 ? 'member' : 'members'}
+                      {/* Button to open member list modal */}
+                      <button 
+                        onClick={() => setShowMemberListModal(true)}
+                        className="ml-3 text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 text-sm font-medium"
+                      >
+                        View Members
+                      </button>
                     </div>
                   )}
                 </div>
@@ -464,7 +473,7 @@ const MainPage = () => {
               </div>
             </div>
             
-            {/* 视图切换选项卡 */}
+            {/* view switch tabs */}
             <div className="border-b border-gray-200 dark:border-gray-700 mb-6">
               <div className="flex justify-between items-center">
                 <div className="flex">
@@ -494,7 +503,7 @@ const MainPage = () => {
               </div>
             </div>
             
-            {/* 主内容区域 */}
+            {/* main content area */}
             <div className="bg-white dark:bg-gray-800 shadow rounded-lg">
               {renderComponent()}
             </div>
@@ -502,7 +511,7 @@ const MainPage = () => {
         </div>
       </div>
       
-      {/* 创建任务模态框 */}
+      {/* create task modal */}
       {showCreateTaskModal && (
         <div className="fixed z-10 inset-0 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
           <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
@@ -671,6 +680,76 @@ const MainPage = () => {
                   You can change default task settings in your <a href="/settings" className="text-emerald-600 dark:text-emerald-400 hover:underline">Settings</a> page.
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Member List Modal */}
+      {showMemberListModal && (
+        <div className="fixed z-20 inset-0 overflow-y-auto" aria-labelledby="member-list-modal-title" role="dialog" aria-modal="true">
+          <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            {/* Background overlay */}
+            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onClick={() => setShowMemberListModal(false)}></div>
+
+            {/* Modal panel */}
+            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+              <div className="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <div className="sm:flex sm:items-start">
+                  <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-emerald-100 dark:bg-emerald-900 sm:mx-0 sm:h-10 sm:w-10">
+                    <i className="fas fa-users text-emerald-600 dark:text-emerald-400"></i>
+                  </div>
+                  <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                    <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white" id="member-list-modal-title">
+                      Team Members ({teamMembers.length})
+                    </h3>
+                    <div className="mt-4 max-h-80 overflow-y-auto pr-2">
+                      {teamMembers.length > 0 ? (
+                        <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+                          {teamMembers.map((member) => (
+                            <li key={member.uid} className="py-3 flex items-center justify-between">
+                              <div className="flex items-center space-x-3">
+                                <div className="flex-shrink-0 h-10 w-10 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center">
+                                  {member.photoURL ? (
+                                    <img className="h-full w-full rounded-full object-cover" src={member.photoURL} alt={member.displayName} />
+                                  ) : (
+                                    <span className="text-gray-500 dark:text-gray-300 font-medium">
+                                      {member.displayName?.charAt(0).toUpperCase() || member.email?.charAt(0).toUpperCase() || 'U'}
+                                    </span>
+                                  )}
+                                </div>
+                                <div>
+                                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{member.displayName}</p>
+                                  <p className="text-xs text-gray-500 dark:text-gray-400">{member.email}</p>
+                                </div>
+                              </div>
+                              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${ 
+                                member.role === 'admin' ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300' : 
+                                member.role === 'manager' ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300' : 
+                                'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300' 
+                              }`}>
+                                {member.role ? member.role.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Unknown'}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-center text-gray-500 dark:text-gray-400 py-4">No members found in this team.</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-gray-50 dark:bg-gray-700 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                <button
+                  type="button"
+                  onClick={() => setShowMemberListModal(false)}
+                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-700"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>

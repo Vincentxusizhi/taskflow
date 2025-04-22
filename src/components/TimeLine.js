@@ -390,7 +390,9 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
     
     setEditedTask(prevState => ({
       ...prevState,
-      status
+      status: status,
+      // Sync progress if status becomes 'completed'
+      progress: status === 'completed' ? 100 : prevState.progress
     }));
   };
 
@@ -401,10 +403,26 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
     }
     
     const progress = parseInt(e.target.value) || 0;
-    setEditedTask(prevState => ({
-      ...prevState,
-      progress: Math.min(100, Math.max(0, progress))
-    }));
+    const newProgress = Math.min(100, Math.max(0, progress));
+
+    setEditedTask(prevState => {
+      let newStatus = prevState.status;
+      // Sync status based on progress
+      if (newProgress === 100) {
+        newStatus = 'completed';
+      } else if (prevState.status === 'completed' && newProgress < 100) {
+        // If reopening a completed task by reducing progress
+        newStatus = 'inProgress';
+      }
+      // Note: We don't automatically change status if progress becomes 0,
+      // it could still be 'inProgress'. Let status changes handle that.
+
+      return {
+        ...prevState,
+        progress: newProgress,
+        status: newStatus
+      };
+    });
   };
 
   const handleSaveChanges = async () => {
@@ -536,7 +554,7 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
     { label: 'Pending', value: 'notStarted' },
     { label: 'In Progress', value: 'inProgress' },
     { label: 'Completed', value: 'completed' },
-    { label: 'Overdue', value: 'overdue' },
+    // { label: 'Overdue', value: 'overdue' },
   ];
 
   // update filtered tasks
@@ -1568,7 +1586,7 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
       <select
         name="status"
         value={editedTask.status || 'notStarted'}
-        onChange={handleInputChange}
+        onChange={(e) => handleStatusChange(e.target.value)} // Changed from handleInputChange
         className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-gray-700 dark:text-white"
       >
         <option value="notStarted">Pending</option>
