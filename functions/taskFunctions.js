@@ -108,7 +108,7 @@ exports.createTask = functions.https.onCall(async (request) => {
             taskId: task.id,
             taskName: task.text,
             read: false,
-            // createdAt: admin.firestore.FieldValue.serverTimestamp() // here can use serverTimestamp because it is not in array
+            createdAt: admin.firestore.FieldValue.serverTimestamp() // here can use serverTimestamp because it is not in array
           });
         }
       }
@@ -201,35 +201,35 @@ exports.updateTask = functions.https.onCall(async (request) => {
         }
     }
 
-    // 创建传入数据的副本
+    // create a copy of incoming data
     const incomingTaskData = {...taskData};
     
-    // 显式删除传入数据中的start_date，防止覆盖
+    // explicitly delete start_date in incoming data to prevent override
     if (incomingTaskData.start_date !== undefined) {
       delete incomingTaskData.start_date;
       console.log("start_date field explicitly removed from incoming data before merge.");
     }
 
-    // 更新任务数据：合并原始任务和移除了start_date的传入数据
+    // update task data: merge original task and incoming data without start_date
     const updatedTask = {
-      ...tasks[taskIndex], // 原始任务
-      ...incomingTaskData, // 传入的更新（不含start_date）
-      start_date: originalStartDate, // 强制使用原始的start_date
+      ...tasks[taskIndex], // original task
+      ...incomingTaskData, // incoming update (without start_date)
+      start_date: originalStartDate, // force use original start_date
       updatedBy: userId,
-      updatedAt: now // 使用静态 Timestamp 而不是 serverTimestamp
+      updatedAt: now // use static Timestamp instead of serverTimestamp
     };
 
-    // 更新任务数组
+    // update task array
     tasks[taskIndex] = updatedTask;
 
-    // 更新 Firestore
+    // update Firestore
     await teamRef.update({ tasks });
 
-    // 直接返回更新后的任务数据
+    // return updated task data directly
     return { 
       success: true,
       taskId: updatedTask.id,
-      task: updatedTask // 前端会处理日期格式
+      task: updatedTask // frontend will handle date format
     };
   } catch (error) {
     console.error("Error updating task:", error);
@@ -240,9 +240,9 @@ exports.updateTask = functions.https.onCall(async (request) => {
   }
 });
 
-// 删除任务
+// delete task
 exports.deleteTask = functions.https.onCall(async (request) => {
-  // 验证用户是否已登录
+  // verify if user is logged in
   if (!request.auth) {
     throw new functions.https.HttpsError(
       'unauthenticated',
@@ -250,7 +250,7 @@ exports.deleteTask = functions.https.onCall(async (request) => {
     );
   }
 
-  // 验证请求数据
+  // verify request data
   if (!request.data.teamId || !request.data.taskId) {
     throw new functions.https.HttpsError(
       'invalid-argument',
@@ -262,7 +262,7 @@ exports.deleteTask = functions.https.onCall(async (request) => {
   const userId = request.auth.uid;
 
   try {
-    // 检查用户是否是团队成员
+    // check if user is team member
     const isMember = await isUserTeamMember(teamId, userId);
     if (!isMember) {
       throw new functions.https.HttpsError(
@@ -271,7 +271,7 @@ exports.deleteTask = functions.https.onCall(async (request) => {
       );
     }
     
-    // 获取团队数据
+    // get team data
     const teamRef = admin.firestore().collection('teams').doc(teamId);
     const teamSnap = await teamRef.get();
     
@@ -284,7 +284,7 @@ exports.deleteTask = functions.https.onCall(async (request) => {
 
     const teamData = teamSnap.data();
     
-    // 查找任务
+    // find task
     const tasks = teamData.tasks || [];
     const updatedTasks = tasks.filter(t => t.id.toString() !== taskId.toString());
     
@@ -295,7 +295,7 @@ exports.deleteTask = functions.https.onCall(async (request) => {
       );
     }
 
-    // 更新 Firestore
+    // update Firestore
     await teamRef.update({
       tasks: updatedTasks
     });

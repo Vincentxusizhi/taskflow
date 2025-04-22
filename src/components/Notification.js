@@ -66,7 +66,15 @@ const Notification = ({ isOpen, onClose, onNotificationsRead }) => {
             });
           });
 
-          setNotifications(notificationsData);
+          // --- Modify Sorting Logic Here ---
+          // Ensure notificationsData is sorted by date descending (needed for the 'read' part)
+          notificationsData.sort((a, b) => b.createdAt - a.createdAt);
+          // Separate read and unread
+          const unread = notificationsData.filter(n => !n.read);
+          const read = notificationsData.filter(n => n.read); // Already sorted by descending date
+          setNotifications([...unread, ...read]); // Unread first (order doesn't matter), then read (sorted)
+          // --- End Sorting Logic ---
+
         } catch (err) {
           console.error('Error fetching notifications with orderBy:', err);
           
@@ -97,10 +105,14 @@ const Notification = ({ isOpen, onClose, onNotificationsRead }) => {
                 });
               });
               
-                
-              fallbackData.sort((a, b) => b.createdAt - a.createdAt);
-              
-              setNotifications(fallbackData);
+              // --- Modify Sorting Logic Here (Fallback) ---
+              // Separate read and unread first
+              const unreadFallback = fallbackData.filter(n => !n.read);
+              const readFallback = fallbackData.filter(n => n.read);
+              // Sort only the read ones by date descending
+              readFallback.sort((a, b) => b.createdAt - a.createdAt);
+              setNotifications([...unreadFallback, ...readFallback]); // Unread first, then sorted read
+              // --- End Sorting Logic (Fallback) ---
               
               // show index error prompt
               const indexUrl = err.message.match(/https:\/\/console\.firebase\.google\.com[^\s]*/);

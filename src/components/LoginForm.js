@@ -56,17 +56,26 @@ const LoginForm = () => {
     } catch (error) {
       console.error('Email login error:', error);
       
-      // Provide detailed error messages
-      if (error.code === 'auth/wrong-password') {
-        setError('Incorrect password. Please try again.');
-      } else if (error.code === 'auth/user-not-found') {
-        setError('Email not registered. Please sign up first.');
-      } else if (error.code === 'auth/invalid-email') {
-        setError('Invalid email format. Please check and try again.');
-      } else if (error.code === 'auth/too-many-requests') {
-        setError('Too many failed attempts. Please try again later.');
-      } else {
-        setError('Login failed. Please try again later.');
+      // Provide detailed error messages based on error code
+      switch (error.code) {
+        case 'auth/user-not-found':
+          setError('Email not registered. Please sign up first.');
+          break;
+        case 'auth/wrong-password':
+          setError('Incorrect password. Please try again.');
+          break;
+        case 'auth/invalid-email':
+          setError('Invalid email format. Please check and try again.');
+          break;
+        case 'auth/too-many-requests':
+          setError('Access temporarily disabled due to too many failed login attempts. Please try again later.');
+          break;
+        case 'auth/invalid-credential':
+          // This code might appear in newer Firebase SDK versions for general bad email/password combo
+          setError('Incorrect email or password. Please try again.'); 
+          break;
+        default:
+          setError('Login failed. Please try again later.');
       }
     } finally {
       setLoading(false);

@@ -53,6 +53,9 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
   });
   const [showFileDeleteConfirm, setShowFileDeleteConfirm] = useState(false);
   const [fileToDelete, setFileToDelete] = useState(null);
+  // State for comment deletion confirmation
+  const [showDeleteCommentConfirm, setShowDeleteCommentConfirm] = useState(false);
+  const [commentToDelete, setCommentToDelete] = useState(null);
 
   const showNotification = (message, type = 'error') => {
     setNotification({
@@ -803,7 +806,7 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
               displayName: currentUser.displayName || currentUser.email,
               email: currentUser.email
             },
-            createdAt: new Date(),
+            createdAt: Timestamp.now(), // Changed from new Date()
             replyTo: replyTo
           };
           
@@ -838,7 +841,8 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
                   teamId: teamId,
                   teamName: teamData.name,
                   taskId: selectedTask.id,
-                  taskName: selectedTask.text
+                  taskName: selectedTask.text,
+                  createdAt: Timestamp.now() // Added createdAt timestamp
                 });
                 showNotification(`send notification to assignee：${replyTo.createdBy.displayName || replyTo.createdBy.email}`, 'success');
               }
@@ -856,7 +860,8 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
                       teamId: teamId,
                       teamName: teamData.name,
                       taskId: selectedTask.id,
-                      taskName: selectedTask.text
+                      taskName: selectedTask.text,
+                      createdAt: Timestamp.now() // Added createdAt timestamp
                     })
                   );
                 
@@ -976,7 +981,7 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
               displayName: currentUser.displayName || currentUser.email,
               email: currentUser.email
             },
-            uploadedAt: new Date()
+            uploadedAt: Timestamp.now() // Changed from new Date()
           };
           
           // update Firestore
@@ -1089,6 +1094,71 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
     setShowFileDeleteConfirm(false);
     setFileToDelete(null);
   };
+
+  // --- Add Comment Deletion Handlers ---
+  const handleDeleteCommentClick = (comment) => {
+    setCommentToDelete(comment);
+    setShowDeleteCommentConfirm(true);
+  };
+
+  const cancelDeleteComment = () => {
+    setShowDeleteCommentConfirm(false);
+    setCommentToDelete(null);
+  };
+
+  const confirmDeleteComment = async () => {
+    if (!commentToDelete || !selectedTask || !teamId) return;
+
+    try {
+      setIsSaving(true); // Use existing saving state for feedback
+
+      const teamRef = doc(db, 'teams', teamId);
+      const teamSnap = await getDoc(teamRef);
+
+      if (!teamSnap.exists()) {
+        throw new Error('Team not found');
+      }
+
+      const teamData = teamSnap.data();
+      const taskIndex = teamData.tasks.findIndex(t => t.id === selectedTask.id);
+
+      if (taskIndex === -1) {
+        throw new Error('Task not found within the team data');
+      }
+
+      const currentTask = teamData.tasks[taskIndex];
+      if (!currentTask.comments || !Array.isArray(currentTask.comments)) {
+          throw new Error('Comments array not found or invalid');
+      }
+
+      // Filter out the comment to be deleted
+      const updatedComments = currentTask.comments.filter(c => c.id !== commentToDelete.id);
+
+      // Create a new tasks array with the updated comments for the specific task
+      const updatedTasks = [...teamData.tasks];
+      updatedTasks[taskIndex] = {
+        ...currentTask,
+        comments: updatedComments
+      };
+
+      // Update Firestore
+      await updateDoc(teamRef, { tasks: updatedTasks });
+
+      // Update local state
+      setComments(updatedComments);
+
+      showNotification('Comment deleted successfully', 'success');
+
+    } catch (err) {
+      console.error('Error deleting comment:', err);
+      showNotification(`Failed to delete comment: ${err.message}`, 'error');
+    } finally {
+      setIsSaving(false);
+      setShowDeleteCommentConfirm(false);
+      setCommentToDelete(null);
+    }
+  };
+  // --- End Comment Deletion Handlers ---
 
   // format file size
   const formatFileSize = (bytes) => {
@@ -1526,33 +1596,37 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
                           {assignee.displayName.charAt(0)}
                         </div>
                         <span className="text-sm text-emerald-800 dark:text-emerald-200">{assignee.displayName}</span>
-                        <button
-                          onClick={() => {
-                            const updatedAssignees = [...editedTask.assignees];
-                            updatedAssignees.splice(index, 1);
-                            setEditedTask(prev => ({
-                              ...prev,
-                              assignees: updatedAssignees
-                            }));
-                          }}
-                          className="ml-2 text-emerald-500 dark:text-emerald-300 hover:text-emerald-700 dark:hover:text-emerald-400"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
+                        {(userRole === 'admin' || userRole === 'manager') && (
+                          <button
+                            onClick={() => {
+                              const updatedAssignees = [...editedTask.assignees];
+                              updatedAssignees.splice(index, 1);
+                              setEditedTask(prev => ({
+                                ...prev,
+                                assignees: updatedAssignees
+                              }));
+                            }}
+                            className="ml-2 text-emerald-500 dark:text-emerald-300 hover:text-emerald-700 dark:hover:text-emerald-400"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        )}
                       </div>
                     ))}
                   </div>
-                  <button
-                    onClick={() => setShowAssigneeSelector(true)}
-                    className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                    </svg>
-                    Add Assignee
-                  </button>
+                  {(userRole === 'admin' || userRole === 'manager') && (
+                    <button
+                      onClick={() => setShowAssigneeSelector(true)}
+                      className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                      Add Assignee
+                    </button>
+                  )}
                 </div>
               ) : (
                       <div className="space-y-2">
@@ -1739,17 +1813,20 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
 <div className="mt-8 border-t border-gray-200 dark:border-gray-700 pt-6">
   <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Comments</h3>
   
-  {/* comment list */}
+  {/* --- Add Console Log Here --- */}
+  {console.log("Rendering comments, currentUser:", currentUser)}
+
+  {/* reply list */}
   <div className="space-y-4 mb-6 max-h-80 overflow-y-auto">
     {comments.length === 0 ? (
       <p className="text-gray-500 dark:text-gray-400 text-center py-4">No comments yet. Be the first to comment!</p>
     ) : (
       comments.map(comment => {
+        // --- Add Console Log Here --- 
+        {console.log(`Comment ID: ${comment.id}, Created by: ${comment.createdBy?.uid}, Current User: ${currentUser?.uid}, Show Delete?`, currentUser?.uid === comment.createdBy?.uid)}
+        
         
         const replies = comments.filter(c => c.replyTo && c.replyTo.id === comment.id);
-        const isRootComment = !comment.replyTo;
-        
-        if (!isRootComment) return null; 
         
         return (
           <div key={comment.id} className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
@@ -1764,12 +1841,24 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
                     <p className="text-sm font-medium text-gray-900 dark:text-white">{comment.createdBy.displayName}</p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">{formatDateTime(comment.createdAt)}</p>
                   </div>
-                  <button
-                    onClick={() => handleReply(comment)}
-                    className="text-sm text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300"
-                  >
-                    Reply
-                  </button>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => handleReply(comment)}
+                      className="text-sm text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300"
+                    >
+                      Reply
+                    </button>
+                    {/* Delete button - visible only to comment author */} 
+                    {currentUser?.uid === comment.createdBy.uid && (
+                      <button
+                        onClick={() => handleDeleteCommentClick(comment)}
+                        className="text-xs text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
+                        title="Delete Comment"
+                      >
+                        <i className="fas fa-trash-alt"></i>
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <p className="mt-2 text-sm text-gray-800 dark:text-gray-200">{comment.text}</p>
               </div>
@@ -1780,6 +1869,8 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
               <div className="mt-3 pl-11 space-y-3">
                 {replies.map(reply => (
                   <div key={reply.id} className="bg-white dark:bg-gray-600 rounded-lg p-3">
+                    {/* --- Add Console Log Here for Replies --- */}
+                    {console.log(`Reply ID: ${reply.id}, Created by: ${reply.createdBy?.uid}, Current User: ${currentUser?.uid}, Show Delete?`, currentUser?.uid === reply.createdBy?.uid)}
                     <div className="flex items-start">
                       <div className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-800 flex items-center justify-center mr-2 flex-shrink-0">
                         <span className="text-gray-800 dark:text-gray-200">{reply.createdBy.displayName.charAt(0)}</span>
@@ -1790,12 +1881,24 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
                             <p className="text-sm font-medium text-gray-900 dark:text-white">{reply.createdBy.displayName}</p>
                             <p className="text-xs text-gray-500 dark:text-gray-300">{formatDateTime(reply.createdAt)}</p>
                           </div>
-                          <button
-                            onClick={() => handleReply(comment)} 
-                            className="text-xs text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300"
-                          >
-                            Reply
-                          </button>
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => handleReply(comment)} // Reply to the original comment
+                              className="text-xs text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300"
+                            >
+                              Reply
+                            </button>
+                            {/* Delete button - visible only to reply author */} 
+                            {currentUser?.uid === reply.createdBy.uid && (
+                              <button
+                                onClick={() => handleDeleteCommentClick(reply)} // Use the same handler
+                                className="text-xs text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
+                                title="Delete Reply"
+                              >
+                                <i className="fas fa-trash-alt"></i>
+                              </button>
+                            )}
+                          </div>
                         </div>
                         <p className="mt-1 text-sm text-gray-800 dark:text-gray-200">
                           <span className="text-blue-600 dark:text-blue-400 font-medium">
@@ -2040,29 +2143,41 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
     </>
   ) : (
     <>
-      {canEditTasks && (
-        <>
-          <button
-            onClick={handleDeleteTask}
-            className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors mr-auto dark:bg-red-600 dark:hover:bg-red-700"
-            disabled={isSaving}
-          >
-            {isSaving ? 'Deleting...' : 'Delete Task'}
-          </button>
-          <button
-            onClick={handleEditTask}
-            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors mr-3 dark:bg-blue-600 dark:hover:bg-blue-700"
-          >
-            Edit Task
-          </button>
-        </>
+      {/* Delete Button - Admin/Manager only */}
+      {(userRole === 'admin' || userRole === 'manager') && (
+        <button
+          onClick={handleDeleteTask}
+          className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors mr-auto dark:bg-red-600 dark:hover:bg-red-700" // mr-auto pushes others right
+          disabled={isSaving}
+        >
+          {isSaving ? 'Deleting...' : 'Delete Task'}
+        </button>
       )}
-                <button
-                  onClick={closeTaskDetails}
-        className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors dark:bg-emerald-600 dark:hover:bg-emerald-700"
-                >
-                  Close
-                </button>
+
+      {/* Edit Button - Admin/Manager/Assignee */}
+      {canEditTasks && (
+        <button
+          onClick={handleEditTask}
+          className={`px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors mr-3 dark:bg-blue-600 dark:hover:bg-blue-700 ${
+            // If delete button ISN'T shown, add ml-auto to push this and Close button right
+            !(userRole === 'admin' || userRole === 'manager') ? 'ml-auto' : ''
+          }`}
+        >
+          Edit Task
+        </button>
+      )}
+
+      {/* Close Button */}
+      <button
+        onClick={closeTaskDetails}
+        className={`px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors dark:bg-emerald-600 dark:hover:bg-emerald-700 ${
+          // If Delete is shown, OR Edit is shown, this button doesn't need margin.
+          // If NEITHER Delete NOR Edit are shown, add ml-auto.
+          !(userRole === 'admin' || userRole === 'manager') && !canEditTasks ? 'ml-auto' : ''
+        }`}
+      >
+        Close
+      </button>
     </>
   )}
               </div>
@@ -2446,6 +2561,50 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
     </div>
   </div>
 )}
+      {/* Comment Delete Confirmation Modal */}
+      {showDeleteCommentConfirm && commentToDelete && (
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 dark:bg-gray-900 dark:bg-opacity-75">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 animate-fade-in-down dark:bg-gray-800">
+            <div className="text-center mb-6">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4 dark:bg-red-900/30">
+                <svg className="h-6 w-6 text-red-600 dark:text-red-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2 dark:text-white">Delete Comment</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-300">
+                Are you sure you want to delete the comment "{commentToDelete.text}"? This action cannot be undone.
+              </p>
+            </div>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={cancelDeleteComment}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+                disabled={isSaving}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteComment}
+                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors flex items-center dark:bg-red-600 dark:hover:bg-red-700"
+                disabled={isSaving}
+              >
+                {isSaving ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Deleting...
+                  </>
+                ) : (
+                  'Delete Comment'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
