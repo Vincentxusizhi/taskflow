@@ -14,19 +14,19 @@ import { NotificationProvider } from './contexts/NotificationContext';
 
 
 function App() {
-  const [user, setUser] = useState(null); // 用户状态
-  const [loading, setLoading] = useState(true); // 加载状态
+  const [user, setUser] = useState(null); 
+  const [loading, setLoading] = useState(true); 
 
-  // 监听用户登录状态
+  // listen to user login status
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
-      setUser(user); // 更新用户状态
-      setLoading(false); // 加载完成
+      setUser(user); // update user status
+      setLoading(false); // loading completed
     });
-    return () => unsubscribe(); // 清理监听器
+    return () => unsubscribe(); // clean up listener
   }, []);
 
-  // 如果正在加载，显示加载提示
+  // if loading, show loading prompt
   if (loading) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
   }
@@ -36,49 +36,49 @@ function App() {
       <ThemeProvider>
         <Router>
           <Routes>
-            {/* 如果用户已登录，跳转到 /dashboard；否则显示登录页面 */}
+            {/* if user is logged in, redirect to /dashboard; otherwise show login page */}
             <Route
               path="/"
               element={user ? <Navigate to="/dashboard" /> : <LoginForm />}
             />
 
-            {/* 如果用户未登录，跳转到 /；否则显示日历页面 */}
+            {/* if user is not logged in, redirect to /; otherwise show calendar page */}
             <Route
               path="/calendar"
               element={user ? <Calendar /> : <Navigate to="/" />}
             />
 
-            {/* 如果用户未登录，跳转到 /；否则显示团队页面 */}
+            {/* if user is not logged in, redirect to /; otherwise show teams page */}
             <Route
               path="/Teams"
               element={user ? <Teams /> : <Navigate to="/" />}
             />
             
-            {/* 团队任务页面 */}
+            {/* if user is not logged in, redirect to /; otherwise show main page */}
             <Route
               path="/team/:teamId/tasks"
               element={user ? <MainPage /> : <Navigate to="/" />}
             />
 
-            {/* 用户个人资料页面 */}
+            {/* if user is not logged in, redirect to /; otherwise show user profile page */}
             <Route
               path="/profile/:userId"
               element={user ? <UserProfile /> : <Navigate to="/" />}
             />
 
-            {/* Dashboard page */}
+            {/* if user is not logged in, redirect to /; otherwise show dashboard page */}
             <Route
               path="/dashboard"
               element={user ? <Dashboard /> : <Navigate to="/" />}
             />
 
-            {/* Reports page */}
+            {/* if user is not logged in, redirect to /; otherwise show reports page */}
             <Route
               path="/reports"
               element={user ? <Reports /> : <Navigate to="/" />}
             />
 
-            {/* 设置页面 */}
+            {/* if user is not logged in, redirect to /; otherwise show settings page */}
             <Route path="/settings" element={<Settings />} />
           </Routes>
         </Router>

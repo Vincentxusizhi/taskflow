@@ -496,11 +496,11 @@ const UserProfile = () => {
                     <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-emerald-100 dark:border-emerald-900/30 flex items-center justify-center bg-emerald-200 text-emerald-700 dark:bg-emerald-700 dark:text-emerald-100 text-4xl font-medium">
                       {/* Conditional Rendering: Image or Initials */}
                       {(avatarPreview || user?.photoURL) ? (
-                        <img 
+                      <img 
                           // Use preview if available, otherwise use user's photoURL
                           src={avatarPreview || user.photoURL} 
-                          alt={user.displayName || 'User'} 
-                          className="w-full h-full object-cover"
+                        alt={user.displayName || 'User'} 
+                        className="w-full h-full object-cover"
                           onError={(e) => { // Simple onError: just log and maybe hide
                             console.error("Failed to load image:", e.target.src);
                             e.target.style.display = 'none'; // Hide broken image

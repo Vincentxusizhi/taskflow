@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { sendEmailVerification } from 'firebase/auth';
 import {
   signInWithGoogle,
   signInWithEmailAndPassword,
@@ -15,6 +16,7 @@ const LoginForm = () => {
   const [displayName, setDisplayName] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
   // Handle Google login
@@ -50,8 +52,27 @@ const LoginForm = () => {
 
     try {
       // Email login
-      const user = await signInWithEmailAndPassword(email, password);
-      console.log('Login user:', user);
+      const result = await signInWithEmailAndPassword(email, password);
+      console.log('Login user:', result.user);
+      
+      // Check if email is verified
+      if (!result.user.emailVerified) {
+        // Email not verified, show error
+        setError('Please verify your email before logging in. Check your inbox for a verification link.');
+        
+        // Optionally offer to resend verification email
+        try {
+          await sendEmailVerification(result.user);
+          setSuccessMessage('A new verification email has been sent.');
+        } catch (verificationError) {
+          console.error('Error resending verification:', verificationError);
+        }
+        
+        // Don't allow navigation to dashboard
+        return;
+      }
+      
+      // Email is verified, proceed with login
       navigate('/dashboard');
     } catch (error) {
       console.error('Email login error:', error);
@@ -87,6 +108,7 @@ const LoginForm = () => {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setSuccessMessage('');
 
     // Basic validation
     if (!displayName.trim()) {
@@ -115,14 +137,24 @@ const LoginForm = () => {
       const userCredential = await createUserWithEmailAndPassword(email, password, displayName);
       console.log('Registered user:', userCredential.user);
       
-      // Save user data to Firestore
+      // Save user data to Firestore - User record exists now, emailVerified is false
       await saveUserToFirestore(
         userCredential.user.uid, 
         email, 
         displayName
       );
       
-      navigate('/Teams');
+      // Send verification email
+      try {
+        await sendEmailVerification(userCredential.user);
+        console.log('Verification email sent to:', email);
+        // Navigate to verification page, passing email as state
+        navigate('/verify-email', { state: { email: email } }); 
+      } catch (verificationError) {
+        console.error("Error sending verification email:", verificationError);
+        setError('Registration successful, but failed to send verification email. Please try logging in or contact support.');
+        // Optionally navigate to login or show error prominently
+      }
     } catch (error) {
       console.error('Registration error:', error);
       
@@ -300,6 +332,10 @@ const LoginForm = () => {
             {error && (
               <p className="text-sm text-red-500">{error}</p>
             )}
+            {/* Success message (useful for resend in login) */}
+            {successMessage && (
+              <p className="text-sm text-green-500">{successMessage}</p>
+            )}
 
             {/* Submit button */}
             <button
@@ -324,6 +360,7 @@ const LoginForm = () => {
                 onClick={() => {
                   setIsSignUp(!isSignUp);
                   setError('');
+                  setSuccessMessage('');
                   setEmail('');
                   setPassword('');
                   setDisplayName('');

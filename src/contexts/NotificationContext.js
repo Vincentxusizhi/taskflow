@@ -140,7 +140,7 @@ export const NotificationProvider = ({ children }) => {
   const showInfo = (message, title, duration) => 
     addNotification('INFO', message, title, duration);
 
-  // 添加CSS动画样式
+  // add CSS animation styles
   useEffect(() => {
     const style = document.createElement('style');
     style.innerHTML = `
@@ -167,7 +167,7 @@ export const NotificationProvider = ({ children }) => {
     };
   }, []);
 
-  // 渲染通知内容
+  // render notifications content
   const renderNotifications = () => {
     if (notifications.length === 0) return null;
 
@@ -195,7 +195,7 @@ export const NotificationProvider = ({ children }) => {
                 <button
                   style={styles.closeButton}
                   onClick={() => removeNotification(id)}
-                  aria-label="关闭通知"
+                  aria-label="close notification"
                 >
                   <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
@@ -217,7 +217,7 @@ export const NotificationProvider = ({ children }) => {
       </div>
     );
 
-    // 使用 ReactDOM 的 Portal 功能，将通知内容渲染到 body 下
+    // use ReactDOM's Portal feature to render notifications content to the body
     return ReactDOM.createPortal(
       notificationsContent,
       document.body
@@ -239,7 +239,7 @@ export const NotificationProvider = ({ children }) => {
   );
 };
 
-// 创建自定义钩子来使用通知
+// create custom hook to use notifications
 export const useNotification = () => {
   const context = useContext(NotificationContext);
   if (!context) {
