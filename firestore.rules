@@ -1,140 +1,16 @@
-rules_version = '2'; // Use rules_version = '2'
-
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Helper functions
-    // Checks if a user is a member of a specific team
-    function isTeamMember(teamId, userId) {
-      return teamId != null && userId != null && exists(/databases/$(database)/documents/teams/$(teamId)) &&
-             userId in get(/databases/$(database)/documents/teams/$(teamId)).data.members;
+    match /{document=**} {
+      // This rule allows anyone with your database reference to view, edit,
+      // and delete all data in your database. It is useful for getting
+      // started, but it is configured to expire after 30 days because it
+      // leaves your app open to attackers. At that time, all client
+      // requests to your database will be denied.
+      //
+      // Make sure to write security rules for your app before that time, or
+      // else all client requests to your database will be denied until you
+      // update your rules.
+      allow read, write: if request.time < timestamp.date(2026, 5, 22);
     }
-
-    // Checks if a user is an admin or manager of a specific team
-    // Assumes membersData is a list of maps [{uid: '...', role: '...'}]
-    function isTeamManagerOrAdmin(teamId, userId) {
-      if (teamId == null || userId == null || !exists(/databases/$(database)/documents/teams/$(teamId))) {
-        return false;
-      }
-      let teamData = get(/databases/$(database)/documents/teams/$(teamId)).data;
-      // Ensure membersData exists and is a list before filtering
-      if (!('membersData' in teamData) || !(teamData.membersData is list)) {
-          return false;
-      }
-      let memberInfo = teamData.membersData.filter(member => member.uid == userId);
-      return memberInfo.size() == 1 && (memberInfo[0].role == 'admin' || memberInfo[0].role == 'manager');
-    }
-
-    // Users Collection (/users/{userId})
-    match /users/{userId} {
-      // Allow logged-in user to read their own profile
-      allow get: if request.auth != null && request.auth.uid == userId;
-      
-      // Allow logged-in user to create their own profile (once)
-      // Validates required fields and ensures UID matches auth
-      allow create: if request.auth != null && request.auth.uid == userId
-                      && request.resource.data.email == request.auth.token.email
-                      && request.resource.data.displayName is string
-                      && request.resource.data.createdAt == request.time
-                      // Add other required fields validation here if necessary
-                      && request.resource.data.keys().hasAll(['email', 'displayName', 'createdAt', 'updatedAt']); // Example validation
-
-      // Allow logged-in user to update their own profile (e.g., displayName)
-      // Prevent changing email or createdAt
-      allow update: if request.auth != null && request.auth.uid == userId
-                      && request.resource.data.email == resource.data.email // Email cannot change
-                      && request.resource.data.createdAt == resource.data.createdAt // createdAt cannot change
-                      && request.resource.data.displayName is string
-                      // Ensure updatedAt is being set correctly
-                      && request.resource.data.updatedAt == request.time;
-                      // Add other updatable fields validation here
-
-      // Deny deletion of user profiles via client SDK for safety
-      allow delete: if false;
-
-      // Allow any authenticated user to list users (e.g., for search) - adjust if needed
-      // Individual document reads are still protected by the 'get' rule above.
-       allow list: if request.auth != null;
-    }
-
-    // Teams Collection (/teams/{teamId})
-    match /teams/{teamId} {
-      // Allow read if user is a member of the team
-      allow get: if request.auth != null && isTeamMember(teamId, request.auth.uid);
-
-      // Allow list only for authenticated users. Client must filter results.
-      allow list: if request.auth != null;
-
-      // Allow creation by any logged-in user
-      // Validate creator is the first member and admin
-      allow create: if request.auth != null
-                      && request.resource.data.createdBy == request.auth.uid
-                      && request.resource.data.members[0] == request.auth.uid // Creator must be first member
-                      && request.resource.data.membersData[0].uid == request.auth.uid
-                      && request.resource.data.membersData[0].role == 'admin' // Creator role is admin
-                      && request.resource.data.name is string && request.resource.data.name.size() > 0
-                      && request.resource.data.createdAt == request.time
-                      && request.resource.data.updatedAt == request.time;
-
-      // Allow updates only by team admin/manager
-      allow update: if request.auth != null
-                      && isTeamManagerOrAdmin(teamId, request.auth.uid)
-                      // Add validation for updated fields (e.g., members list integrity)
-                      && request.resource.data.updatedAt == request.time;
-
-      // Allow deletion only by team admin
-      allow delete: if request.auth != null && isTeamManagerOrAdmin(teamId, request.auth.uid);
-    }
-
-    // Tasks Collection (/tasks/{taskId})
-    match /tasks/{taskId} {
-      // Allow read if user is creator, assignee, or member of the associated team
-      allow get: if request.auth != null &&
-                    (request.auth.uid == resource.data.createdBy ||
-                     request.auth.uid in resource.data.assignedTo || // Assuming assignedTo is a list of UIDs
-                     isTeamMember(resource.data.teamId, request.auth.uid));
-
-      // Allow list only for logged-in users (client must filter)
-      allow list: if request.auth != null;
-
-      // Allow create if user is creator and member of the team (if teamId is set)
-      allow create: if request.auth != null &&
-                      request.resource.data.createdBy == request.auth.uid &&
-                      (request.resource.data.teamId == null || isTeamMember(request.resource.data.teamId, request.auth.uid))
-                      // Validate required fields
-                      && request.resource.data.title is string && request.resource.data.title.size() > 0
-                      && request.resource.data.createdAt == request.time
-                      && request.resource.data.updatedAt == request.time;
-
-      // Allow update if user is creator, assignee, or admin/manager of the team
-      allow update: if request.auth != null &&
-                      (request.auth.uid == resource.data.createdBy ||
-                       request.auth.uid in resource.data.assignedTo ||
-                       isTeamManagerOrAdmin(resource.data.teamId, request.auth.uid))
-                      // Validate updated fields
-                      && request.resource.data.updatedAt == request.time;
-
-      // Allow delete if user is creator or admin/manager of the team
-      allow delete: if request.auth != null &&
-                      (request.auth.uid == resource.data.createdBy ||
-                       isTeamManagerOrAdmin(resource.data.teamId, request.auth.uid));
-    }
-
-    // Notifications Collection (/notifications/{notificationId})
-    match /notifications/{notificationId} {
-      // Allow user to read/update (mark as read)/delete their own notifications
-      allow get, update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
-
-      // Allow list only for authenticated users. Client MUST filter `where('userId', '==', currentUser.uid)`
-      allow list: if request.auth != null;
-
-      // Prevent client-side creation of notifications (should be done via Cloud Functions)
-      allow create: if false;
-    }
-
-    // Deny access to any other paths by default
-     match /{document=**} {
-       allow read, write: if false;
-     }
   }
 }
