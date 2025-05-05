@@ -21,6 +21,7 @@
 const functions = require('firebase-functions/v2');
 const admin = require('firebase-admin');
 const { onDocumentUpdated } = require("firebase-functions/v2/firestore");
+const { logger } = functions;
 admin.initializeApp();
 
 // Import user profile functions
@@ -31,6 +32,9 @@ const teamFunctions = require('./teamFunctions');
 
 // Import task functions
 const taskFunctions = require('./taskFunctions');
+
+// Import the new client logging function
+const clientLogging = require('./logClientEvent');
 
 // Export user profile functions
 exports.getUserProfile = userProfileFunctions.getUserProfile;
@@ -52,6 +56,24 @@ exports.updateTeam = teamFunctions.updateTeam;
 exports.createTask = taskFunctions.createTask;
 exports.updateTask = taskFunctions.updateTask;
 exports.deleteTask = taskFunctions.deleteTask;
+
+// Export the new logging function
+exports.logClientEvent = clientLogging.logClientEvent;
+
+// --- Add the new simple scaling test function --- 
+/**
+ * A simple HTTP endpoint for load testing scaling.
+ * Requires no authentication, body, or specific headers.
+ * Responds to GET requests with a simple message.
+ */
+exports.helloScalingTest = functions.https.onRequest((request, response) => {
+  // Log the request minimally for verification during testing
+  logger.log("helloScalingTest function invoked", { method: request.method, path: request.path });
+
+  // Just send a simple success response
+  response.status(200).send("Hello from Scaling Test Function!");
+});
+// --- End of new function ---
 
 // send notification
 exports.sendNotification = functions.https.onCall(async (request) => {
