@@ -9,6 +9,7 @@ import UserProfile from './components/UserProfile';
 import Settings from './components/Settings';
 import Dashboard from './components/Dashboard'; 
 import Reports from './components/Reports'; 
+import VerifyEmail from './components/VerifyEmail';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { NotificationProvider } from './contexts/NotificationContext'; 
 
@@ -41,6 +42,9 @@ function App() {
               path="/"
               element={user ? <Navigate to="/dashboard" /> : <LoginForm />}
             />
+
+            {/* Email verification route */}
+            <Route path="/verify-email" element={<VerifyEmail />} />
 
             {/* if user is not logged in, redirect to /; otherwise show calendar page */}
             <Route

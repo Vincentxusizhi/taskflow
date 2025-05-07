@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { sendEmailVerification } from 'firebase/auth';
 import {
   signInWithGoogle,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   fetchSignInMethodsForEmail,
   saveUserToFirestore,
+  sendEmailVerification
 } from '../firebase';
 
 const LoginForm = () => {
@@ -60,15 +60,18 @@ const LoginForm = () => {
         // Email not verified, show error
         setError('Please verify your email before logging in. Check your inbox for a verification link.');
         
-        // Optionally offer to resend verification email
+        // Offer to resend verification email
         try {
           await sendEmailVerification(result.user);
           setSuccessMessage('A new verification email has been sent.');
+          
+          // Navigate to verification page instead of dashboard
+          navigate('/verify-email', { state: { email: email } });
         } catch (verificationError) {
           console.error('Error resending verification:', verificationError);
         }
         
-        // Don't allow navigation to dashboard
+        setLoading(false);
         return;
       }
       

@@ -6,7 +6,8 @@ import {
   signInWithEmailAndPassword as firebaseSignInWithEmailAndPassword,
   createUserWithEmailAndPassword as firebaseCreateUserWithEmailAndPassword,
   fetchSignInMethodsForEmail as firebaseFetchSignInMethodsForEmail,
-  updateProfile
+  updateProfile,
+  sendEmailVerification as firebaseSendEmailVerification
 } from 'firebase/auth';
 import { 
   getFirestore, 
@@ -108,6 +109,17 @@ export const saveUserToFirestore = async (userId, email, displayName) => {
     return true;
   } catch (error) {
     console.error("Error saving user data to Firestore:", error);
+    throw error;
+  }
+};
+
+// Send email verification
+export const sendEmailVerification = async (user) => {
+  try {
+    await firebaseSendEmailVerification(user);
+    return true;
+  } catch (error) {
+    console.error("Error sending verification email:", error);
     throw error;
   }
 };
