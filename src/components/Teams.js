@@ -17,6 +17,7 @@ import { onAuthStateChanged } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 import Header from "./Header";
 import { getFunctions, httpsCallable } from "firebase/functions";
+import { logInfo, logError, logWarn } from '../utils/logger';
 
 const Teams = () => {
   const navigate = useNavigate();
@@ -77,6 +78,7 @@ const Teams = () => {
           }
         } catch (error) {
           console.error("Error fetching user data:", error);
+          logError("Error fetching user data:", {ErrorMessage: error})
         }
       } else {
         setUserData(null);

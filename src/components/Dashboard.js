@@ -4,6 +4,7 @@ import { auth, db } from '../firebase';
 import { doc, getDoc, collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import Header from './Header';
+import { logInfo, logError, logWarn } from '../utils/logger';
 
 const Dashboard = () => {
   const navigate = useNavigate();

@@ -7,6 +7,7 @@ import Header from './Header';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { initializeApp } from 'firebase/app';
+import { logInfo, logError, logWarn } from '../utils/logger';
 
 
 const UserProfile = () => {
@@ -94,6 +95,7 @@ const UserProfile = () => {
     }
     
     console.log('Current user UID:', user.uid);
+    logInfo('Current user UID:', {userinfo: user.uid})
         // Call the cloud function to get user profile data
         const getUserProfile = httpsCallable(functions, 'getUserProfile');
         const result = await getUserProfile({ userId });
@@ -114,6 +116,7 @@ const UserProfile = () => {
         
       } catch (err) {
         console.error('Error fetching user data:', err);
+        logError('Error fetching user data:', {errorMessage: err})
         setError(err.message || 'Failed to load user data');
       } finally {
         setLoading(false);

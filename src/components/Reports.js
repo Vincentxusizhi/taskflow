@@ -17,6 +17,7 @@ import {
   Legend,
 } from 'chart.js';
 import { Bar, Doughnut, Line, Pie } from 'react-chartjs-2';
+import { logInfo, logError, logWarn } from '../utils/logger';
 
 // Register ChartJS components
 ChartJS.register(
@@ -120,6 +121,7 @@ const Reports = () => {
 
       } catch (error) {
         console.error('Error fetching report data:', error);
+        logError('Error fetching report data:', {errorMessage: error})
       } finally {
         setLoading(false);
       }

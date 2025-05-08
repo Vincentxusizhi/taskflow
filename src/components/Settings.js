@@ -6,6 +6,7 @@ import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useTheme } from '../contexts/ThemeContext';
 import { useNotification } from '../contexts/NotificationContext';
 import Header from './Header';
+import { logInfo, logError, logWarn } from '../utils/logger';
 
 
 const Settings = () => {
@@ -106,6 +107,7 @@ const Settings = () => {
         }
       } catch (error) {
         console.error('Error fetching user data:', error);
+        logError('Error fetching user data:', {ErrorMessage: error})
         showError('Failed to load user settings');
       } finally {
         setLoading(false);

@@ -4,7 +4,7 @@ import { getAuth } from 'firebase/auth';
 // You can find this URL in the Firebase Console (Functions section) after deploying the 'logClientEvent' function.
 // It typically looks like: https://<YOUR_REGION>-<YOUR_PROJECT_ID>.cloudfunctions.net/logClientEvent
 // Consider using environment variables for this in a real application (e.g., process.env.REACT_APP_LOG_FUNCTION_URL)
-const logClientEventUrl = 'YOUR_LOG_CLIENT_EVENT_FUNCTION_URL_HERE'; // <-- REPLACE THIS
+const logClientEventUrl = 'https://us-central1-sample-a9153.cloudfunctions.net/logClientEvent'; // <-- REPLACE THIS
 
 /**
  * Sends a log entry to the backend logging Cloud Function.

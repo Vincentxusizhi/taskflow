@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { auth, sendEmailVerification } from '../firebase';
+import { logInfo, logError, logWarn } from '../utils/logger';
 
 const VerifyEmail = () => {
   const location = useLocation();

@@ -8,6 +8,7 @@ import {
   saveUserToFirestore,
   sendEmailVerification
 } from '../firebase';
+import { logInfo, logError, logWarn } from '../utils/logger';
 
 const LoginForm = () => {
   const navigate = useNavigate();
@@ -27,6 +28,7 @@ const LoginForm = () => {
     try {
       const result = await signInWithGoogle();
       console.log('Login user:', result.user);
+      logInfo('log in user', { loggeduser: result.user })
       
       // Save/update user in Firestore regardless of whether they're new
       await saveUserToFirestore(
@@ -39,6 +41,9 @@ const LoginForm = () => {
     } catch (error) {
       console.error('Google login error:', error);
       setError('Google login failed. Please try again later.');
+      logError('Google login failed', { errorMessage: error.message, 
+        errorCode: error.code, 
+    })
     } finally {
       setLoading(false);
     }
@@ -54,6 +59,7 @@ const LoginForm = () => {
       // Email login
       const result = await signInWithEmailAndPassword(email, password);
       console.log('Login user:', result.user);
+      logInfo('log in user', { loggeduser: result.user })
       
       // Check if email is verified
       if (!result.user.emailVerified) {

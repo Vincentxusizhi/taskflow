@@ -4,6 +4,7 @@ import { doc, getDoc, updateDoc, onSnapshot, arrayUnion, arrayRemove, Timestamp 
 import { ref as storageRef, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, auth, storage } from '../firebase';
 import { getFunctions, httpsCallable } from 'firebase/functions';
+import { logInfo, logError, logWarn } from '../utils/logger';
 
 // Init Firebase Functions
 const functions = getFunctions();
@@ -110,6 +111,7 @@ const Timeline = ({ teamId, refreshKey = 0 }) => {
         }
       } catch (err) {
         console.error('Error fetching tasks:', err);
+        logError('Error fetching tasks:', {ErrorMessage: err} )
         setError(`Error fetching tasks: ${err.message}`);
       } finally {
         setLoading(false);

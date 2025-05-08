@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { auth, db } from '../firebase';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import Header from './Header';
+import { logInfo, logError, logWarn } from '../utils/logger';
 
 const Calendar = () => {
  
@@ -60,6 +61,7 @@ const Calendar = () => {
         }
       } catch (error) {
         console.error('Error fetching user data:', error);
+        logError("Error fetching user data:",{errormessage: error})
       } finally {
         setLoading(false);
       }

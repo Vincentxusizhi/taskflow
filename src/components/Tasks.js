@@ -7,6 +7,7 @@ import { getFunctions, httpsCallable } from 'firebase/functions';
 import Header from './Header';
 import Timeline from './TimeLine';
 import Calendar from './Calendar';
+import { logInfo, logError, logWarn } from '../utils/logger';
 
 
 // initialize Firebase Functions
@@ -71,10 +72,12 @@ const MainPage = () => {
       if (teamSnap.exists()) {
         const data = teamSnap.data();
         console.log("Team data received:", data);
+        logInfo("Team data received:", {teamdata: data})
         
         // Ensure team data has a name
         if (!data.name) {
           console.warn("Team data missing name property");
+          logWarn("Team data missing name property", {teamdata: data})
         }
         
         setTeamData({
@@ -87,6 +90,7 @@ const MainPage = () => {
           setTeamMembers(data.membersData);
         } else {
           console.warn("Team data missing membersData array");
+          logWarn("Team data missing membersData array", {teamdata: data.memberData})
           // If no members data in correct format, initialize as empty array
           setTeamMembers([]);
         }
